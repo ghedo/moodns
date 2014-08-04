@@ -100,6 +100,11 @@ Options:
 		rsp.Header.Flags |= mdns.FlagQR;
 		rsp.Header.Flags |= mdns.FlagAA;
 
+		if req.Header.Flags & mdns.FlagRD != 0 {
+			rsp.Header.Flags |= mdns.FlagRD;
+			rsp.Header.Flags |= mdns.FlagRA
+		}
+
 		if client.Port != 5353 {
 			rsp.Header.Id = req.Header.Id;
 		}
@@ -120,6 +125,11 @@ Options:
 
 				default:
 					continue;
+			}
+
+			if client.Port != 5353 {
+				rsp.Question = append(rsp.Question, q);
+				rsp.Header.QDCount++;
 			}
 		}
 
