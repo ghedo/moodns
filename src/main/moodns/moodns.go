@@ -45,7 +45,7 @@ func main() {
 	usage := `Usage: moodns [options]
 
 Options:
-  -H <host>, --host <host>        Name of the local host [default: ].
+  -H <host>, --host <host>        Name of the local host.
   -l <listen>, --listen <listen>  Listen on this address:port [default: 0.0.0.0:5353].
   -s, --silent                    Print fatal errors only.
   -h, --help                      Show the program's help message and exit.`
