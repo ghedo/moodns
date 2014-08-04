@@ -31,7 +31,6 @@
 package main
 
 import "log"
-import "net"
 import "os"
 
 import "github.com/docopt/docopt-go"
@@ -69,7 +68,7 @@ Options:
 
 	localname := hostname + ".local.";
 
-	server, err := mcast.NewServer(listen, "224.0.0.251");
+	maddr, server, err := mcast.NewServer(listen, "224.0.0.251:5353");
 	if err != nil {
 		log.Fatal("Error starting server: ", err);
 	}
@@ -134,11 +133,7 @@ Options:
 		}
 
 		if client.Port == 5353 {
-			client, err = 
-				net.ResolveUDPAddr("udp", "224.0.0.251:5353");
-			if err != nil {
-				log.Fatal("Error resolving address: ", err);
-			}
+			client = maddr;
 		}
 
 		_, err = server.WriteToUDP(out, client);

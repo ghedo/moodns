@@ -35,38 +35,43 @@ import "net"
 import "syscall"
 import "unsafe"
 
-func NewServer(addr string, maddr string) (*net.UDPConn, error) {
+func NewServer(addr string, maddr string) (*net.UDPAddr, *net.UDPConn, error) {
 	saddr, err := net.ResolveUDPAddr("udp", addr);
 	if err != nil {
-		return nil, fmt.Errorf("Could not resolve address '%s': ", addr, err);
+		return nil, nil, fmt.Errorf("Could not resolve address '%s': ", addr, err);
+	}
+
+	smaddr, err := net.ResolveUDPAddr("udp", maddr);
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not resolve address '%s': ", addr, err);
 	}
 
 	udp, err := net.ListenUDP("udp", saddr);
 	if err != nil {
-		return nil, fmt.Errorf("Could not listen: %s", err);
+		return nil, nil, fmt.Errorf("Could not listen: %s", err);
 	}
 
 	err = SetTTL(udp, 1);
 	if err != nil {
-		return nil, fmt.Errorf("Could not set TTL: %s", err);
+		return nil, nil, fmt.Errorf("Could not set TTL: %s", err);
 	}
 
 	err = SetLoop(udp, 0);
 	if err != nil {
-		return nil, fmt.Errorf("Could not set loop: %s", err);
+		return nil, nil, fmt.Errorf("Could not set loop: %s", err);
 	}
 
-	err = AddMembership(udp, net.ParseIP(maddr));
+	err = AddMembership(udp, smaddr.IP);
 	if err != nil {
-		return nil, fmt.Errorf("Could not join group: %s", err);
+		return nil, nil, fmt.Errorf("Could not join group: %s", err);
 	}
 
 	err = SetPktInfo(udp, 1);
 	if err != nil {
-		return nil, fmt.Errorf("Could not set PKTINFO: %s", err);
+		return nil, nil, fmt.Errorf("Could not set PKTINFO: %s", err);
 	}
 
-	return udp, nil;
+	return smaddr, udp, nil;
 }
 
 func Read(udp *net.UDPConn, b []byte) (int, *net.IPNet, *net.IPNet, *net.UDPAddr, error) {
