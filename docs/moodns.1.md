@@ -7,7 +7,9 @@ moodns(1) -- minimal multicast DNS server
 
 ## DESCRIPTION
 
-**moodns** is a pretty minimal multicast DNS server.
+**moodns** is a server implementation of multicast DNS. Multicast DNS allows
+programs to discover hosts running on a local network by using familiar DNS
+programming interfaces without the need for a conventional DNS server.
 
 ## OPTIONS ##
 `-H, --host`
