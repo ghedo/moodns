@@ -45,7 +45,7 @@ func Pack(msg *Message) ([]byte, error) {
 	}
 
 	for i := uint16(0); i < msg.Header.QDCount; i++ {
-		err := PackStruct(b, &msg.Question[i]);
+		err := PackStruct(b, msg.Question[i]);
 		if err != nil {
 			return nil, fmt.Errorf("Could not pack qd: %s", err);
 		}
