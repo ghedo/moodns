@@ -36,12 +36,12 @@ import "net"
 func NewServer(addr string, maddr string) (*net.UDPAddr, *net.UDPConn, error) {
 	saddr, err := net.ResolveUDPAddr("udp", addr);
 	if err != nil {
-		return nil, nil, fmt.Errorf("Could not resolve address '%s': ", addr, err);
+		return nil, nil, fmt.Errorf("Could not resolve address '%s': %s", addr, err);
 	}
 
 	smaddr, err := net.ResolveUDPAddr("udp", maddr);
 	if err != nil {
-		return nil, nil, fmt.Errorf("Could not resolve address '%s': ", addr, err);
+		return nil, nil, fmt.Errorf("Could not resolve address '%s': %s", maddr, err);
 	}
 
 	udp, err := net.ListenUDP("udp", saddr);
@@ -98,6 +98,10 @@ func Read(udp *net.UDPConn) (*Message, *net.IPNet, *net.IPNet, *net.UDPAddr, err
 	oob := make([]byte, 40);
 
 	n, oobn, _, from, err := udp.ReadMsgUDP(pkt, oob);
+	if err != nil {
+		return nil, nil, nil, nil,
+		  fmt.Errorf("Could not read: %s", err);
+	}
 
 	if oobn > 0 {
 		pktinfo := ParseOob(oob[:oobn]);
