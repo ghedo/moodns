@@ -10,20 +10,22 @@ all: moodns
 
 moodns: deps
 	go install -tags '$(BUILDTAGS)' main/moodns
+	go install -tags '$(BUILDTAGS)' main/moodns-resolve
 
 deps:
 	go get -tags '$(BUILDTAGS)' -d -v main/moodns
+	go get -tags '$(BUILDTAGS)' -d -v main/moodns-resolve
 
-man: docs/moodns.1.md
-	ronn -r $<
+man: docs/moodns.1.md docs/moodns-resolve.1.md
+	ronn -r $?
 
-html: docs/moodns.1.md
-	ronn -h $<
+html: docs/moodns.1.md docs/moodns-resolve.1.md
+	ronn -h $?
 
 release-all: BUILDTAGS=release
 release-all: all
 
 clean:
-	go clean -i main/moodns mdns
+	go clean -i main/moodns main/moodns-resolve mdns
 
 .PHONY: all moodns deps clean

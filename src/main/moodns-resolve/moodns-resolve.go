@@ -28,65 +28,52 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package mdns
+package main
 
-import "net"
+import "log"
 
-func NewQD(name string, t Type, class Class) (*Question) {
-	qd := new(Question);
+import "github.com/docopt/docopt-go"
 
-	qd.Name = append(qd.Name, name...);
-	qd.Name = append(qd.Name, '.');
+import "mdns"
 
-	qd.Type  = t;
-	qd.Class = class;
+func main() {
+	log.SetFlags(0);
 
-	return qd;
-}
+	usage := `Usage: moodns-resolve [options] <name>
 
-func NewA(addr net.IP) *A {
-	a := new(A);
+Options:
+  -6, --ipv6  Request IPv6 address too [default: false].
+  -h, --help  Show the program's help message and exit.`
 
-	a.Addr = addr.To4();
-
-	return a;
-}
-
-func NewAAAA(addr net.IP) *AAAA {
-	a := new(AAAA);
-
-	a.Addr = addr.To16();
-
-	return a;
-}
-
-func NewCNAME(cname string) *CNAME {
-	a := new(CNAME);
-
-	a.CNAME = []byte(cname);
-
-	return a;
-}
-
-func (msg *Message) AppendQD(qd *Question) {
-	msg.Question = append(msg.Question, qd);
-	msg.Header.QDCount++;
-}
-
-func (msg *Message) AppendAN(qd *Question, rdata RData) {
-	if rdata == nil {
-		return;
+	args, err := docopt.Parse(usage, nil, true, "", false)
+	if err != nil {
+		log.Fatal("Invalid arguments: ", err);
 	}
 
-	an := new(Answer);
+	name := args["<name>"].(string);
 
-	an.Name  = qd.Name;
-	an.Type  = qd.Type;
-	an.Class = qd.Class;
-	an.TTL   = 3600;
-	an.RData = rdata;
-	an.RDLen = rdata.Len();
+	maddr, client, err := mdns.NewServer("0.0.0.0:0", "224.0.0.251:5353");
+	if err != nil {
+		log.Fatal("Error creating client: ", err);
+	}
 
-	msg.Answer = append(msg.Answer, an);
-	msg.Header.ANCount++;
+	req := new(mdns.Message);
+
+	req.AppendQD(mdns.NewQD(name, mdns.TypeA, mdns.ClassInet));
+
+	if args["--ipv6"].(bool) {
+		req.AppendQD(mdns.NewQD(name, mdns.TypeAAAA, mdns.ClassInet));
+	}
+
+	err = mdns.Write(client, maddr, req);
+	if err != nil {
+		log.Fatal("Error sending request: ", err);
+	}
+
+	rsp, _, _, _, err := mdns.Read(client);
+	if err != nil {
+		log.Fatal("Error reading request: ", err);
+	}
+
+	log.Println(rsp);
 }
