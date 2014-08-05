@@ -72,6 +72,25 @@ func NewServer(addr string, maddr string) (*net.UDPAddr, *net.UDPConn, error) {
 	return smaddr, udp, nil;
 }
 
+func NewClient(addr string, maddr string) (*net.UDPAddr, *net.UDPConn, error) {
+	saddr, err := net.ResolveUDPAddr("udp", addr);
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not resolve address '%s': %s", addr, err);
+	}
+
+	smaddr, err := net.ResolveUDPAddr("udp", maddr);
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not resolve address '%s': %s", maddr, err);
+	}
+
+	udp, err := net.ListenUDP("udp", saddr);
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not listen: %s", err);
+	}
+
+	return smaddr, udp, nil;
+}
+
 func MakeResponse(client *net.UDPAddr, req *Message) (*Message) {
 	rsp := new(Message);
 

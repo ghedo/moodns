@@ -31,6 +31,7 @@
 package main
 
 import "log"
+import "time"
 
 import "github.com/docopt/docopt-go"
 
@@ -52,7 +53,7 @@ Options:
 
 	name := args["<name>"].(string);
 
-	maddr, client, err := mdns.NewServer("0.0.0.0:0", "224.0.0.251:5353");
+	maddr, client, err := mdns.NewClient("0.0.0.0:0", "224.0.0.251:5353");
 	if err != nil {
 		log.Fatal("Error creating client: ", err);
 	}
@@ -65,15 +66,29 @@ Options:
 		req.AppendQD(mdns.NewQD(name, mdns.TypeAAAA, mdns.ClassInet));
 	}
 
-	err = mdns.Write(client, maddr, req);
-	if err != nil {
-		log.Fatal("Error sending request: ", err);
+	var rsp *mdns.Message;
+
+	for i := 0; i < 3; i++ {
+		seconds := 3 * time.Second;
+		timeout := time.Now().Add(seconds);
+
+		err = mdns.Write(client, maddr, req);
+		if err != nil {
+			log.Fatal("Error sending request: ", err);
+		}
+
+		client.SetReadDeadline(timeout);
+
+		rsp, _, _, _, err = mdns.Read(client);
+		if err != nil {
+			log.Println("Error reading request: ", err);
+			continue;
+		}
+
+		break;
 	}
 
-	rsp, _, _, _, err := mdns.Read(client);
-	if err != nil {
-		log.Fatal("Error reading request: ", err);
+	if rsp != nil {
+		log.Println(rsp);
 	}
-
-	log.Println(rsp);
 }
