@@ -105,7 +105,7 @@ func (t Type) MakeRR() RData {
 		case TypeHINFO: return new(HINFO);
 		case TypeTXT:   return new(TXT);
 		case TypeAAAA:  return new(AAAA);
-		case TypeSRV:   return nil;
+		case TypeSRV:   return new(SRV);
 		case TypeOPT:   return new(OPT);
 		case TypeAny:   return nil;
 		default:        return nil;
