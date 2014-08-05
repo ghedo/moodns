@@ -24,6 +24,6 @@ release-all: BUILDTAGS=release
 release-all: all
 
 clean:
-	go clean -i main/moodns mcast mdns
+	go clean -i main/moodns mdns
 
 .PHONY: all moodns deps clean

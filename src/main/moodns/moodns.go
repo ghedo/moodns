@@ -35,7 +35,6 @@ import "os"
 
 import "github.com/docopt/docopt-go"
 
-import "mcast"
 import "mdns"
 
 func main() {
@@ -68,46 +67,25 @@ Options:
 
 	localname := hostname + ".local.";
 
-	maddr, server, err := mcast.NewServer(listen, "224.0.0.251:5353");
+	maddr, server, err := mdns.NewServer(listen, "224.0.0.251:5353");
 	if err != nil {
 		log.Fatal("Error starting server: ", err);
 	}
 
-	pkt := make([]byte, 65536);
-
 	for {
-		n, local4, local6, client, err := mcast.Read(server, pkt);
+		req, local4, local6, client, err := mdns.Read(server);
 		if err != nil {
 			if args["--silent"].(bool) != true {
-				log.Print("Error reading from network: ", err);
+				log.Println("Error reading request: ", err);
+				continue;
 			}
-		}
-
-		req, err := mdns.Unpack(pkt[:n]);
-		if err != nil {
-			if args["--silent"].(bool) != true {
-				log.Print("Error unpacking request: ", err);
-			}
-			continue;
 		}
 
 		if len(req.Question) == 0 || len(req.Answer) > 0 {
 			continue;
 		}
 
-		rsp := new(mdns.Message);
-
-		rsp.Header.Flags |= mdns.FlagQR;
-		rsp.Header.Flags |= mdns.FlagAA;
-
-		if req.Header.Flags & mdns.FlagRD != 0 {
-			rsp.Header.Flags |= mdns.FlagRD;
-			rsp.Header.Flags |= mdns.FlagRA
-		}
-
-		if client.Port != 5353 {
-			rsp.Header.Id = req.Header.Id;
-		}
+		rsp := mdns.MakeResponse(client, req);
 
 		for _, q := range req.Question {
 			if string(q.Name) != localname {
@@ -137,18 +115,16 @@ Options:
 			continue;
 		}
 
-		out, err := mdns.Pack(rsp);
-		if err != nil {
-			log.Fatal("Error packing response: ", err);
-		}
-
 		if client.Port == 5353 {
 			client = maddr;
 		}
 
-		_, err = server.WriteToUDP(out, client);
+		err = mdns.Write(server, client, rsp);
 		if err != nil {
-			log.Fatal("Error writing to network: ", err);
+			if args["--silent"].(bool) != true {
+				log.Println("Error sending response: ", err);
+				continue;
+			}
 		}
 	}
 }

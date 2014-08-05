@@ -28,88 +28,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-package mcast
+package mdns
 
 import "fmt"
 import "net"
 import "syscall"
 import "unsafe"
-
-func NewServer(addr string, maddr string) (*net.UDPAddr, *net.UDPConn, error) {
-	saddr, err := net.ResolveUDPAddr("udp", addr);
-	if err != nil {
-		return nil, nil, fmt.Errorf("Could not resolve address '%s': ", addr, err);
-	}
-
-	smaddr, err := net.ResolveUDPAddr("udp", maddr);
-	if err != nil {
-		return nil, nil, fmt.Errorf("Could not resolve address '%s': ", addr, err);
-	}
-
-	udp, err := net.ListenUDP("udp", saddr);
-	if err != nil {
-		return nil, nil, fmt.Errorf("Could not listen: %s", err);
-	}
-
-	err = SetTTL(udp, 1);
-	if err != nil {
-		return nil, nil, fmt.Errorf("Could not set TTL: %s", err);
-	}
-
-	err = SetLoop(udp, 0);
-	if err != nil {
-		return nil, nil, fmt.Errorf("Could not set loop: %s", err);
-	}
-
-	err = AddMembership(udp, smaddr.IP);
-	if err != nil {
-		return nil, nil, fmt.Errorf("Could not join group: %s", err);
-	}
-
-	err = SetPktInfo(udp, 1);
-	if err != nil {
-		return nil, nil, fmt.Errorf("Could not set PKTINFO: %s", err);
-	}
-
-	return smaddr, udp, nil;
-}
-
-func Read(udp *net.UDPConn, b []byte) (int, *net.IPNet, *net.IPNet, *net.UDPAddr, error) {
-	var local4 *net.IPNet;
-	var local6 *net.IPNet;
-
-	oob := make([]byte, 40);
-
-	n, oobn, _, from, err := udp.ReadMsgUDP(b, oob);
-
-	if oobn > 0 {
-		pktinfo := ParseOob(oob[:oobn]);
-
-		if pktinfo != nil {
-			ifi, err := net.InterfaceByIndex(int(pktinfo.Ifindex));
-			if err != nil {
-				return 0, nil, nil, nil,
-				  fmt.Errorf("Could not find if: %s", err);
-			}
-
-			addrs, err := ifi.Addrs();
-			if err != nil {
-				return 0, nil, nil, nil,
-				  fmt.Errorf("Could not find addrs: %s", err);
-			}
-
-			for _, a := range addrs {
-				if a.(*net.IPNet).IP.To4() != nil {
-					local4 = a.(*net.IPNet);
-				} else {
-					local6 = a.(*net.IPNet);
-				}
-			}
-		}
-	}
-
-	return n, local4, local6, from, err;
-}
 
 func SetTTL(udp *net.UDPConn, value int) error {
 	return SetsockoptInt(udp, syscall.IP_MULTICAST_TTL, value);
