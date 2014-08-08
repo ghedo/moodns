@@ -45,6 +45,13 @@ const (
 	FlagRA       = 128;
 	FlagAD       = 32;
 	FlagCD       = 16;
+
+	RCodeOK      = 0;
+	RCodeFmtErr  = 2;
+	RCodeServErr = 2;
+	RCodeNameErr = 3;
+	RCodeNotImpl = 4;
+	RCodeRefused = 5;
 )
 
 func (t Flags) String() string {
@@ -79,6 +86,15 @@ func (t Flags) String() string {
 	}
 
 	return strings.Join(s, " ");
+}
+
+func (t Flags) RCode() uint8 {
+	flags := t;
+
+	flags <<= 12;
+	flags >>= 12;
+
+	return uint8(flags);
 }
 
 type Type uint16;
