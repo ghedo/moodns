@@ -23,6 +23,11 @@ computer hostname.
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 Listen on this address:port [default: 0.0.0.0:5353].
 
+`-r, --enable-multicast-forward`
+
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Enable forwarding of unicast requests to multicast (enable at your own risk).
+
 `-s, --silent`
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;

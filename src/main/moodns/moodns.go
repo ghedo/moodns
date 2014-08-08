@@ -30,8 +30,13 @@
 
 package main
 
+import "bytes"
+import "fmt"
 import "log"
+import "math"
+import "math/rand"
 import "os"
+import "time"
 
 import "github.com/docopt/docopt-go"
 
@@ -45,6 +50,7 @@ func main() {
 Options:
   -H <hostname>, --host <hostname>      Name of the local host.
   -l <addr:port>, --listen <addr:port>  Listen on this address and port [default: 0.0.0.0:5353].
+  -r, --enable-multicast-forward        Enable forwarding of unicast requests to multicast.
   -s, --silent                          Print fatal errors only.
   -h, --help                            Show the program's help message and exit.`
 
@@ -72,6 +78,8 @@ Options:
 		log.Fatal("Error starting server: ", err);
 	}
 
+	var sent_id uint16;
+
 	for {
 		req, local4, local6, client, err := mdns.Read(server);
 		if err != nil {
@@ -81,14 +89,27 @@ Options:
 			}
 		}
 
-		if len(req.Question) == 0 || len(req.Answer) > 0 {
+		if req.Header.Flags & mdns.FlagQR != 0 {
+			continue;
+		}
+
+		if sent_id > 0 && req.Header.Id == sent_id {
 			continue;
 		}
 
 		rsp := mdns.MakeResponse(client, req);
 
 		for _, q := range req.Question {
+			if client.Port != 5353 {
+				rsp.Question = append(rsp.Question, q);
+				rsp.Header.QDCount++;
+			}
+
 			if string(q.Name) != localname {
+				if args["--enable-multicast-forward"].(bool) != false {
+					sent_id, _ = MakeRecursive(q, rsp);
+				}
+
 				continue;
 			}
 
@@ -104,14 +125,10 @@ Options:
 				default:
 					continue;
 			}
-
-			if client.Port != 5353 {
-				rsp.Question = append(rsp.Question, q);
-				rsp.Header.QDCount++;
-			}
 		}
 
-		if len(rsp.Answer) == 0 {
+		if rsp.Header.ANCount == 0 &&
+		   rsp.Header.Flags.RCode() == mdns.RCodeOK {
 			continue;
 		}
 
@@ -127,4 +144,52 @@ Options:
 			}
 		}
 	}
+}
+
+func MakeRecursive(qd *mdns.Question, out *mdns.Message) (uint16, error) {
+	maddr, client, err := mdns.NewClient("0.0.0.0:0", "224.0.0.251:5353");
+	if err != nil {
+		return 0, fmt.Errorf("Could not create client: %s", err);
+	}
+	defer client.Close();
+
+	if bytes.HasSuffix(qd.Name, []byte("local.")) != true {
+		out.Header.Flags |= mdns.RCodeFmtErr;
+		return 0, nil;
+	}
+
+	rand.Seed(time.Now().UTC().UnixNano());
+	id := uint16(rand.Intn(math.MaxUint16));
+
+	req := new(mdns.Message);
+	req.Header.Id = id;
+	req.AppendQD(qd);
+
+	var rsp *mdns.Message;
+
+	seconds := 3 * time.Second;
+	timeout := time.Now().Add(seconds);
+
+	err = mdns.Write(client, maddr, req);
+	if err != nil {
+		return 0, fmt.Errorf("Could not send request: %s", err);
+	}
+
+	client.SetReadDeadline(timeout);
+
+	rsp, _, _, _, err = mdns.Read(client);
+	if err != nil {
+		return 0, fmt.Errorf("Could not read response: %s", err);
+	}
+
+	if rsp.Header.Id != id {
+		return 0, fmt.Errorf("Wrong id: %d", rsp.Header.Id);
+	}
+
+	for _, an := range rsp.Answer {
+		out.Answer = append(out.Answer, an);
+		out.Header.ANCount++;
+	}
+
+	return id, nil;
 }
