@@ -30,7 +30,11 @@
 
 package mdns
 
+import "bytes"
 import "fmt"
+import "log"
+import "math"
+import "math/rand"
 import "net"
 import "time"
 
@@ -206,4 +210,99 @@ func SendRequest(req *Message) (*Message, error) {
 	}
 
 	return rsp, nil;
+}
+
+func Serve(p *ipv4.PacketConn, maddr *net.UDPAddr, localname string, silent, forward bool) {
+	var sent_id uint16;
+
+	for {
+		req, local4, local6, client, err := Read(p);
+		if err != nil {
+			if silent != true {
+				log.Println("Error reading request: ", err);
+				continue;
+			}
+		}
+
+		if req.Header.Flags & FlagQR != 0 {
+			continue;
+		}
+
+		if sent_id > 0 && req.Header.Id == sent_id {
+			continue;
+		}
+
+		rsp := MakeResponse(client, req);
+
+		for _, q := range req.Question {
+			if client.Port != 5353 {
+				rsp.Question = append(rsp.Question, q);
+				rsp.Header.QDCount++;
+			}
+
+			if string(q.Name) != localname {
+				if forward != false {
+					sent_id, _ = MakeRecursive(q, rsp);
+				}
+
+				continue;
+			}
+
+			switch (q.Type) {
+				case TypeA:
+					an := NewA(local4.IP);
+					rsp.AppendAN(q, an);
+
+				case TypeAAAA:
+					an := NewAAAA(local6.IP);
+					rsp.AppendAN(q, an);
+
+				default:
+					continue;
+			}
+		}
+
+		if rsp.Header.ANCount == 0 &&
+		   rsp.Header.Flags.RCode() == RCodeOK {
+			continue;
+		}
+
+		if client.Port == 5353 {
+			client = maddr;
+		}
+
+		err = Write(p, client, rsp);
+		if err != nil {
+			if silent != true {
+				log.Println("Error sending response: ", err);
+				continue;
+			}
+		}
+	}
+}
+
+func MakeRecursive(qd *Question, out *Message) (uint16, error) {
+	if bytes.HasSuffix(qd.Name, []byte("local.")) != true {
+		out.Header.Flags |= RCodeFmtErr;
+		return 0, nil;
+	}
+
+	rand.Seed(time.Now().UTC().UnixNano());
+	id := uint16(rand.Intn(math.MaxUint16));
+
+	req := new(Message);
+	req.Header.Id = id;
+	req.AppendQD(qd);
+
+	rsp, err := SendRequest(req);
+	if err != nil {
+		return 0, fmt.Errorf("Could not send request: %s", err);
+	}
+
+	for _, an := range rsp.Answer {
+		out.Answer = append(out.Answer, an);
+		out.Header.ANCount++;
+	}
+
+	return id, nil;
 }

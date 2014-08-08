@@ -35,14 +35,14 @@ This mode can be enabled by running moodns with the `--enable-multicast-forward`
 option and then configuring the client computer to use moodns as DNS server:
 
 ```bash
-# moodns --listen ':53' --enable-multicast-forward
+# moodns --listen ':5353,:53' --enable-multicast-forward
 ```
 
 Then edit the `/etc/resolv.conf` file and the add `nameserver 127.0.0.1` to the
-top of the file. Note that the `--listen ':53'` option is needed because some
-system DNS resolvers (e.g. glibc's) do not support setting the name server port
-and always use `53`. If your system resolver supports changing the port (e.g.
-Max OS X, Solaris, OpenBSD) you don't need that option.
+top of the file. Note that the `--listen ':5353,:53'` option is needed because
+some system DNS resolvers (e.g. glibc's) do not support setting the name server
+port and always use `53`. If your system resolver supports changing the port
+(e.g. Max OS X, Solaris, OpenBSD) you don't need that option.
 
 moodns will only answer queries for `*.local` domain names, and if it receives
 a query for another domain name it will return an error so that the querier will

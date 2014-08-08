@@ -21,7 +21,8 @@ computer hostname.
 `-l, --listen`
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-Listen on this address:port [default: 0.0.0.0:5353].
+Listen on this address:port [default: 0.0.0.0:5353]. Multiple <address:port>
+comma-separated tuples can be provided.
 
 `-r, --enable-multicast-forward`
 
