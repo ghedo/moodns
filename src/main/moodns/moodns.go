@@ -147,12 +147,6 @@ Options:
 }
 
 func MakeRecursive(qd *mdns.Question, out *mdns.Message) (uint16, error) {
-	maddr, client, err := mdns.NewClient("0.0.0.0:0", "224.0.0.251:5353");
-	if err != nil {
-		return 0, fmt.Errorf("Could not create client: %s", err);
-	}
-	defer client.Close();
-
 	if bytes.HasSuffix(qd.Name, []byte("local.")) != true {
 		out.Header.Flags |= mdns.RCodeFmtErr;
 		return 0, nil;
@@ -165,25 +159,9 @@ func MakeRecursive(qd *mdns.Question, out *mdns.Message) (uint16, error) {
 	req.Header.Id = id;
 	req.AppendQD(qd);
 
-	var rsp *mdns.Message;
-
-	seconds := 3 * time.Second;
-	timeout := time.Now().Add(seconds);
-
-	err = mdns.Write(client, maddr, req);
+	rsp, err := mdns.SendRequest(req);
 	if err != nil {
 		return 0, fmt.Errorf("Could not send request: %s", err);
-	}
-
-	client.SetReadDeadline(timeout);
-
-	rsp, _, _, _, err = mdns.Read(client);
-	if err != nil {
-		return 0, fmt.Errorf("Could not read response: %s", err);
-	}
-
-	if rsp.Header.Id != id {
-		return 0, fmt.Errorf("Wrong id: %d", rsp.Header.Id);
 	}
 
 	for _, an := range rsp.Answer {

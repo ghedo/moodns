@@ -32,6 +32,7 @@ package mdns
 
 import "fmt"
 import "net"
+import "time"
 
 import "code.google.com/p/go.net/ipv4"
 
@@ -176,4 +177,33 @@ func Write(p *ipv4.PacketConn, addr *net.UDPAddr, msg *Message) (error) {
 	}
 
 	return nil;
+}
+
+func SendRequest(req *Message) (*Message, error) {
+	maddr, client, err := NewClient("0.0.0.0:0", "224.0.0.251:5353");
+	if err != nil {
+		return nil, fmt.Errorf("Could not create client: %s", err);
+	}
+	defer client.Close();
+
+	seconds := 3 * time.Second;
+	timeout := time.Now().Add(seconds);
+
+	err = Write(client, maddr, req);
+	if err != nil {
+		return nil, fmt.Errorf("Could not send request: %s", err);
+	}
+
+	client.SetReadDeadline(timeout);
+
+	rsp, _, _, _, err := Read(client);
+	if err != nil {
+		return nil, fmt.Errorf("Could not read response: %s", err);
+	}
+
+	if rsp.Header.Id != req.Header.Id {
+		return nil, fmt.Errorf("Wrong id: %d", rsp.Header.Id);
+	}
+
+	return rsp, nil;
 }
