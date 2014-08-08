@@ -33,7 +33,9 @@ package mdns
 import "fmt"
 import "net"
 
-func NewServer(addr string, maddr string) (*net.UDPAddr, *net.UDPConn, error) {
+import "code.google.com/p/go.net/ipv4"
+
+func NewServer(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error) {
 	saddr, err := net.ResolveUDPAddr("udp", addr);
 	if err != nil {
 		return nil, nil, fmt.Errorf("Could not resolve address '%s': %s", addr, err);
@@ -49,30 +51,30 @@ func NewServer(addr string, maddr string) (*net.UDPAddr, *net.UDPConn, error) {
 		return nil, nil, fmt.Errorf("Could not listen: %s", err);
 	}
 
-	err = SetTTL(udp, 1);
+	p := ipv4.NewPacketConn(udp);
+	if err := p.JoinGroup(nil, smaddr); err != nil {
+		return nil, nil, fmt.Errorf("Could not join group: %s", err);
+	}
+
+	err = p.SetTTL(1);
 	if err != nil {
 		return nil, nil, fmt.Errorf("Could not set TTL: %s", err);
 	}
 
-	err = SetLoop(udp, 0);
+	err = p.SetMulticastLoopback(false);
 	if err != nil {
 		return nil, nil, fmt.Errorf("Could not set loop: %s", err);
 	}
 
-	err = AddMembership(udp, smaddr.IP);
+	err = p.SetControlMessage(ipv4.FlagInterface, true);
 	if err != nil {
-		return nil, nil, fmt.Errorf("Could not join group: %s", err);
+		return nil, nil, fmt.Errorf("Could not set ctrlmsg: %s", err);
 	}
 
-	err = SetPktInfo(udp, 1);
-	if err != nil {
-		return nil, nil, fmt.Errorf("Could not set PKTINFO: %s", err);
-	}
-
-	return smaddr, udp, nil;
+	return smaddr, p, nil;
 }
 
-func NewClient(addr string, maddr string) (*net.UDPAddr, *net.UDPConn, error) {
+func NewClient(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error) {
 	saddr, err := net.ResolveUDPAddr("udp", addr);
 	if err != nil {
 		return nil, nil, fmt.Errorf("Could not resolve address '%s': %s", addr, err);
@@ -88,7 +90,19 @@ func NewClient(addr string, maddr string) (*net.UDPAddr, *net.UDPConn, error) {
 		return nil, nil, fmt.Errorf("Could not listen: %s", err);
 	}
 
-	return smaddr, udp, nil;
+	p := ipv4.NewPacketConn(udp);
+
+	err = p.SetMulticastLoopback(false);
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not set loop: %s", err);
+	}
+
+	err = p.SetControlMessage(ipv4.FlagInterface, true);
+	if err != nil {
+		return nil, nil, fmt.Errorf("Could not set ctrlmsg: %s", err);
+	}
+
+	return smaddr, p, nil;
 }
 
 func MakeResponse(client *net.UDPAddr, req *Message) (*Message) {
@@ -109,42 +123,35 @@ func MakeResponse(client *net.UDPAddr, req *Message) (*Message) {
 	return rsp;
 }
 
-func Read(udp *net.UDPConn) (*Message, *net.IPNet, *net.IPNet, *net.UDPAddr, error) {
+func Read(p *ipv4.PacketConn) (*Message, *net.IPNet, *net.IPNet, *net.UDPAddr, error) {
 	var local4 *net.IPNet;
 	var local6 *net.IPNet;
 
 	pkt := make([]byte, 65536);
-	oob := make([]byte, 40);
 
-	n, oobn, _, from, err := udp.ReadMsgUDP(pkt, oob);
+	n, cm, from, err := p.ReadFrom(pkt);
 	if err != nil {
 		return nil, nil, nil, nil,
 		  fmt.Errorf("Could not read: %s", err);
 	}
 
-	if oobn > 0 {
-		pktinfo := ParseOob(oob[:oobn]);
+	ifi, err := net.InterfaceByIndex(cm.IfIndex);
+	if err != nil {
+		return nil, nil, nil, nil,
+		    fmt.Errorf("Could not find if: %s", err);
+	}
 
-		if pktinfo != nil {
-			ifi, err := net.InterfaceByIndex(int(pktinfo.Ifindex));
-			if err != nil {
-				return nil, nil, nil, nil,
-				  fmt.Errorf("Could not find if: %s", err);
-			}
+	addrs, err := ifi.Addrs();
+	if err != nil {
+		return nil, nil, nil, nil,
+		  fmt.Errorf("Could not find addrs: %s", err);
+	}
 
-			addrs, err := ifi.Addrs();
-			if err != nil {
-				return nil, nil, nil, nil,
-				  fmt.Errorf("Could not find addrs: %s", err);
-			}
-
-			for _, a := range addrs {
-				if a.(*net.IPNet).IP.To4() != nil {
-					local4 = a.(*net.IPNet);
-				} else {
-					local6 = a.(*net.IPNet);
-				}
-			}
+	for _, a := range addrs {
+		if a.(*net.IPNet).IP.To4() != nil {
+			local4 = a.(*net.IPNet);
+		} else {
+			local6 = a.(*net.IPNet);
 		}
 	}
 
@@ -154,16 +161,16 @@ func Read(udp *net.UDPConn) (*Message, *net.IPNet, *net.IPNet, *net.UDPAddr, err
 		  fmt.Errorf("Could not unpack request: %s", err);
 	}
 
-	return req, local4, local6, from, err;
+	return req, local4, local6, from.(*net.UDPAddr), err;
 }
 
-func Write(udp *net.UDPConn, addr *net.UDPAddr, msg *Message) (error) {
+func Write(p *ipv4.PacketConn, addr *net.UDPAddr, msg *Message) (error) {
 	pkt, err := Pack(msg);
 	if err != nil {
 		return fmt.Errorf("Could not pack response: %s", err);
 	}
 
-	_, err = udp.WriteToUDP(pkt, addr);
+	_, err = p.WriteTo(pkt, nil, addr);
 	if err != nil {
 		return fmt.Errorf("Could not write to network: %s", err);
 	}
