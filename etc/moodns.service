@@ -1,0 +1,7 @@
+[Unit]
+Description=Minimal multicast DNS server
+Documentation=man:moodns(1)
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/moodns
