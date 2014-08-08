@@ -71,7 +71,7 @@ func NewServer(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error
 		return nil, nil, fmt.Errorf("Could not set loop: %s", err);
 	}
 
-	err = p.SetControlMessage(ipv4.FlagInterface, true);
+	err = p.SetControlMessage(ipv4.FlagInterface | ipv4.FlagDst, true);
 	if err != nil {
 		return nil, nil, fmt.Errorf("Could not set ctrlmsg: %s", err);
 	}
@@ -102,7 +102,7 @@ func NewClient(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error
 		return nil, nil, fmt.Errorf("Could not set loop: %s", err);
 	}
 
-	err = p.SetControlMessage(ipv4.FlagInterface, true);
+	err = p.SetControlMessage(ipv4.FlagInterface | ipv4.FlagDst, true);
 	if err != nil {
 		return nil, nil, fmt.Errorf("Could not set ctrlmsg: %s", err);
 	}
@@ -128,7 +128,7 @@ func MakeResponse(client *net.UDPAddr, req *Message) (*Message) {
 	return rsp;
 }
 
-func Read(p *ipv4.PacketConn) (*Message, *net.IPNet, *net.IPNet, *net.UDPAddr, error) {
+func Read(p *ipv4.PacketConn) (*Message, net.IP, *net.IPNet, *net.IPNet, *net.UDPAddr, error) {
 	var local4 *net.IPNet;
 	var local6 *net.IPNet;
 
@@ -136,19 +136,19 @@ func Read(p *ipv4.PacketConn) (*Message, *net.IPNet, *net.IPNet, *net.UDPAddr, e
 
 	n, cm, from, err := p.ReadFrom(pkt);
 	if err != nil {
-		return nil, nil, nil, nil,
+		return nil, nil, nil, nil, nil,
 		  fmt.Errorf("Could not read: %s", err);
 	}
 
 	ifi, err := net.InterfaceByIndex(cm.IfIndex);
 	if err != nil {
-		return nil, nil, nil, nil,
+		return nil, nil, nil, nil, nil,
 		    fmt.Errorf("Could not find if: %s", err);
 	}
 
 	addrs, err := ifi.Addrs();
 	if err != nil {
-		return nil, nil, nil, nil,
+		return nil, nil, nil, nil, nil,
 		  fmt.Errorf("Could not find addrs: %s", err);
 	}
 
@@ -162,11 +162,11 @@ func Read(p *ipv4.PacketConn) (*Message, *net.IPNet, *net.IPNet, *net.UDPAddr, e
 
 	req, err := Unpack(pkt[:n]);
 	if err != nil {
-		return nil, nil, nil, nil,
+		return nil, nil, nil, nil, nil,
 		  fmt.Errorf("Could not unpack request: %s", err);
 	}
 
-	return req, local4, local6, from.(*net.UDPAddr), err;
+	return req, cm.Dst, local4, local6, from.(*net.UDPAddr), err;
 }
 
 func Write(p *ipv4.PacketConn, addr *net.UDPAddr, msg *Message) (error) {
@@ -200,7 +200,7 @@ func SendRequest(req *Message) (*Message, error) {
 
 	client.SetReadDeadline(timeout);
 
-	rsp, _, _, _, err := Read(client);
+	rsp, _, _, _, _, err := Read(client);
 	if err != nil {
 		return nil, fmt.Errorf("Could not read response: %s", err);
 	}
@@ -216,7 +216,7 @@ func Serve(p *ipv4.PacketConn, maddr *net.UDPAddr, localname string, silent, for
 	var sent_id uint16;
 
 	for {
-		req, local4, local6, client, err := Read(p);
+		req, dest, local4, local6, client, err := Read(p);
 		if err != nil {
 			if silent != true {
 				log.Println("Error reading request: ", err);
@@ -241,7 +241,7 @@ func Serve(p *ipv4.PacketConn, maddr *net.UDPAddr, localname string, silent, for
 			}
 
 			if string(q.Name) != localname {
-				if forward != false {
+				if dest.IsLoopback() && forward != false {
 					sent_id, _ = MakeRecursive(q, rsp);
 				}
 
