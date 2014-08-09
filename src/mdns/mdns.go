@@ -81,7 +81,15 @@ func (msg *Message) AppendAN(qd *Question, rdata RData, ttl uint32) {
 	an := new(Answer);
 
 	an.Name  = qd.Name;
-	an.Type  = qd.Type;
+
+	switch rdata.(type) {
+		case *A:
+			an.Type = TypeA;
+
+		case *AAAA:
+			an.Type = TypeAAAA;
+	}
+
 	an.Class = qd.Class;
 	an.TTL   = ttl;
 	an.RData = rdata;

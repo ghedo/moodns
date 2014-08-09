@@ -262,6 +262,13 @@ func Serve(p *ipv4.PacketConn, maddr *net.UDPAddr, localname string, silent, for
 					an := NewAAAA(local6.IP);
 					rsp.AppendAN(q, an, 120);
 
+				case TypeAny:
+					a := NewA(local4.IP);
+					rsp.AppendAN(q, a, 120);
+
+					aaaa := NewAAAA(local6.IP);
+					rsp.AppendAN(q, aaaa, 120);
+
 				default:
 					continue;
 			}
