@@ -235,6 +235,11 @@ func Serve(p *ipv4.PacketConn, maddr *net.UDPAddr, localname string, silent, for
 		rsp := MakeResponse(client, req);
 
 		for _, q := range req.Question {
+			switch (q.Class) {
+				case ClassInet,ClassInet|ClassUnicast,ClassAny:
+				default: continue;
+			}
+
 			if client.Port != 5353 {
 				rsp.Question = append(rsp.Question, q);
 				rsp.Header.QDCount++;
