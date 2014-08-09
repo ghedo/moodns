@@ -73,7 +73,7 @@ func (msg *Message) AppendQD(qd *Question) {
 	msg.Header.QDCount++;
 }
 
-func (msg *Message) AppendAN(qd *Question, rdata RData) {
+func (msg *Message) AppendAN(qd *Question, rdata RData, ttl uint32) {
 	if rdata == nil {
 		return;
 	}
@@ -83,7 +83,7 @@ func (msg *Message) AppendAN(qd *Question, rdata RData) {
 	an.Name  = qd.Name;
 	an.Type  = qd.Type;
 	an.Class = qd.Class;
-	an.TTL   = 3600;
+	an.TTL   = ttl;
 	an.RData = rdata;
 	an.RDLen = rdata.Len();
 
