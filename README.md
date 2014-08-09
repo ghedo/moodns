@@ -48,11 +48,12 @@ Start moodns like this:
 $ sudo moodns --listen ':5353,:53' --enable-multicast-forward
 ```
 
-Then edit the `/etc/resolv.conf` file and the add `nameserver 127.0.0.1` to the
-top of the file. Note that the `--listen ':5353,:53'` option is needed because
-some system DNS resolvers (e.g. glibc's) do not support setting the name server
-port and always use `53`. If your system resolver supports changing the port
-(e.g. Mac OS X, Solaris, OpenBSD) you don't need that option.
+Then edit the `/etc/resolv.conf` file and add `nameserver 127.0.0.1` to the top
+of the file. Note that the `--listen ':5353,:53'` option is needed because some
+system DNS resolvers (e.g. glibc's) do not support setting the name server port
+and always use `53`. If your system resolver supports changing the port (e.g.
+Mac OS X, Solaris, OpenBSD) you don't need that option (nor running moodns as
+root).
 
 moodns will only answer queries for `*.local` domain names, and if it receives
 a query for another domain name it will return an error so that the querier will
