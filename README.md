@@ -9,6 +9,14 @@ DNS programming interfaces without the need for a conventional DNS server.
 
 [rfc]: http://tools.ietf.org/html/rfc6762
 
+### FEATURES
+
+* No configuration required.
+* Support for forwarding unicast DNS queries to multicast servers which can be
+  used for transparently enabling client-side multicast DNS with minimal config
+  changes (see caveats below).
+* No dependencies (e.g. dbus) required.
+
 ## GETTING STARTED
 
 There's not much to it, just run:
@@ -23,7 +31,7 @@ provided).
 
 In order to enable multicast DNS on a client computer one can either install
 [nss-mdns] [nss] (recommended), or enable the forwarding of unicast requests in
-moodns using the `--enable-multicast-forward` option.
+moodns.
 
 "Multicast forwarding" allows moodns to receive DNS queries via unicast (like
 any traditional DNS server) and automatically forward those queries to other
@@ -32,7 +40,9 @@ forward it to the multicast DNS address, receive the multicast response and
 forward that response back to the client via unicast).
 
 This mode can be enabled by running moodns with the `--enable-multicast-forward`
-option and then configuring the client computer to use moodns as DNS server:
+option and then configuring the client computer to use moodns as DNS server.
+
+Start moodns like this:
 
 ```bash
 # moodns --listen ':5353,:53' --enable-multicast-forward
@@ -49,9 +59,10 @@ a query for another domain name it will return an error so that the querier will
 fallback to another DNS server without waiting for the timeout to expire
 (remember to configure `/etc/resolv.conf` with multiple `nameserver` lines).
 
-Note however that this mode is **not recommended**. It's just a hack and may
-break your system in unexpected ways. Unless you know what you are doing, use
-[nss-mdns] [nss] instead.
+Note however that this mode is **not recommended**. It's not part of the
+multicast DNS specs and is really just a hack which may break your system in
+unexpected ways. Unless you know what you are doing, use [nss-mdns] [nss]
+instead.
 
 See the [man page](http://ghedo.github.io/moodns/) for more information.
 
