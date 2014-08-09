@@ -132,7 +132,7 @@ func Read(p *ipv4.PacketConn) (*Message, net.IP, *net.IPNet, *net.IPNet, *net.UD
 	var local4 *net.IPNet;
 	var local6 *net.IPNet;
 
-	pkt := make([]byte, 65536);
+	pkt := make([]byte, 9000);
 
 	n, cm, from, err := p.ReadFrom(pkt);
 	if err != nil {
