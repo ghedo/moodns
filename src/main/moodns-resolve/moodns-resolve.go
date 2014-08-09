@@ -54,10 +54,12 @@ Options:
 
 	req := new(mdns.Message);
 
-	req.AppendQD(mdns.NewQD(name, mdns.TypeA, mdns.ClassInet));
+	qname := []byte(name + ".");
+
+	req.AppendQD(mdns.NewQD(qname, mdns.TypeA, mdns.ClassInet));
 
 	if args["--ipv6"].(bool) {
-		req.AppendQD(mdns.NewQD(name, mdns.TypeAAAA, mdns.ClassInet));
+		req.AppendQD(mdns.NewQD(qname, mdns.TypeAAAA, mdns.ClassInet));
 	}
 
 	rsp, err := mdns.SendRequest(req);

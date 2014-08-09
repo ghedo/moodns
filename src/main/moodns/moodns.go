@@ -58,15 +58,10 @@ Options:
 		log.Fatal("Invalid arguments: ", err);
 	}
 
-	listen   := args["--listen"].(string);
-	hostname := "";
+	listen := args["--listen"].(string);
 
-	if args["--host"] == nil {
-		hostname, err = os.Hostname();
-		if err != nil {
-			log.Fatal("Error retrieving hostname: ", err);
-		}
-	} else {
+	hostname, _ := os.Hostname();
+	if args["--host"] != nil {
 		hostname = args["--host"].(string);
 	}
 
@@ -75,7 +70,7 @@ Options:
 	forward   := args["--enable-multicast-forward"].(bool);
 
 	for _, addr := range strings.Split(listen, ",") {
-		maddr, server, err := mdns.NewServer(addr, "224.0.0.251:5353");
+		maddr, server, err := mdns.NewServer(addr, mdns.MDNSAddr);
 		if err != nil {
 			log.Fatal("Error starting server: ", err);
 		}

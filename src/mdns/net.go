@@ -40,7 +40,7 @@ import "time"
 
 import "code.google.com/p/go.net/ipv4"
 
-func NewServer(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error) {
+func NewConn(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error) {
 	saddr, err := net.ResolveUDPAddr("udp", addr);
 	if err != nil {
 		return nil, nil, fmt.Errorf("Could not resolve address '%s': %s", addr, err);
@@ -57,9 +57,6 @@ func NewServer(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error
 	}
 
 	p := ipv4.NewPacketConn(udp);
-	if err := p.JoinGroup(nil, smaddr); err != nil {
-		return nil, nil, fmt.Errorf("Could not join group: %s", err);
-	}
 
 	err = p.SetTTL(1);
 	if err != nil {
@@ -79,53 +76,22 @@ func NewServer(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error
 	return smaddr, p, nil;
 }
 
-func NewClient(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error) {
-	saddr, err := net.ResolveUDPAddr("udp", addr);
+func NewServer(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error) {
+	smaddr, p, err := NewConn(addr, maddr);
+
 	if err != nil {
-		return nil, nil, fmt.Errorf("Could not resolve address '%s': %s", addr, err);
+		return nil, nil, err;
 	}
 
-	smaddr, err := net.ResolveUDPAddr("udp", maddr);
-	if err != nil {
-		return nil, nil, fmt.Errorf("Could not resolve address '%s': %s", maddr, err);
-	}
-
-	udp, err := net.ListenUDP("udp", saddr);
-	if err != nil {
-		return nil, nil, fmt.Errorf("Could not listen: %s", err);
-	}
-
-	p := ipv4.NewPacketConn(udp);
-
-	err = p.SetMulticastLoopback(false);
-	if err != nil {
-		return nil, nil, fmt.Errorf("Could not set loop: %s", err);
-	}
-
-	err = p.SetControlMessage(ipv4.FlagInterface | ipv4.FlagDst, true);
-	if err != nil {
-		return nil, nil, fmt.Errorf("Could not set ctrlmsg: %s", err);
+	if err = p.JoinGroup(nil, smaddr); err != nil {
+		return nil, nil, fmt.Errorf("Could not join group: %s", err);
 	}
 
 	return smaddr, p, nil;
 }
 
-func MakeResponse(client *net.UDPAddr, req *Message) (*Message) {
-	rsp := new(Message);
-
-	rsp.Header.Flags |= FlagQR;
-	rsp.Header.Flags |= FlagAA;
-
-	if req.Header.Flags & FlagRD != 0 {
-		rsp.Header.Flags |= FlagRD;
-		rsp.Header.Flags |= FlagRA;
-	}
-
-	if client.Port != 5353 {
-		rsp.Header.Id = req.Header.Id;
-	}
-
-	return rsp;
+func NewClient(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error) {
+	return NewConn(addr, maddr);
 }
 
 func Read(p *ipv4.PacketConn) (*Message, net.IP, *net.IPNet, *net.IPNet, *net.UDPAddr, error) {
@@ -184,7 +150,7 @@ func Write(p *ipv4.PacketConn, addr *net.UDPAddr, msg *Message) (error) {
 }
 
 func SendRequest(req *Message) (*Message, error) {
-	maddr, client, err := NewClient("0.0.0.0:0", "224.0.0.251:5353");
+	maddr, client, err := NewClient("0.0.0.0:0", MDNSAddr);
 	if err != nil {
 		return nil, fmt.Errorf("Could not create client: %s", err);
 	}
@@ -212,6 +178,33 @@ func SendRequest(req *Message) (*Message, error) {
 	return rsp, nil;
 }
 
+func SendRecursiveRequest(msg *Message, q *Question) uint16 {
+	if bytes.HasSuffix(q.Name, []byte("local.")) != true {
+		msg.Header.Flags |= RCodeServFail;
+		return 0;
+	}
+
+	rand.Seed(time.Now().UTC().UnixNano());
+	id := uint16(rand.Intn(math.MaxUint16));
+
+	req := new(Message);
+
+	req.Header.Id = id;
+	req.AppendQD(q);
+
+	rsp, err := SendRequest(req);
+	if err != nil {
+		return 0;
+	}
+
+	for _, an := range rsp.Answer {
+		msg.Answer = append(msg.Answer, an);
+		msg.Header.ANCount++;
+	}
+
+	return id;
+}
+
 func Serve(p *ipv4.PacketConn, maddr *net.UDPAddr, localname string, silent, forward bool) {
 	var sent_id uint16;
 
@@ -232,7 +225,19 @@ func Serve(p *ipv4.PacketConn, maddr *net.UDPAddr, localname string, silent, for
 			continue;
 		}
 
-		rsp := MakeResponse(client, req);
+		rsp := new(Message);
+
+		rsp.Header.Flags |= FlagQR;
+		rsp.Header.Flags |= FlagAA;
+
+		if req.Header.Flags & FlagRD != 0 {
+			rsp.Header.Flags |= FlagRD;
+			rsp.Header.Flags |= FlagRA;
+		}
+
+		if client.Port != 5353 {
+			rsp.Header.Id = req.Header.Id;
+		}
 
 		for _, q := range req.Question {
 			switch (q.Class) {
@@ -247,35 +252,36 @@ func Serve(p *ipv4.PacketConn, maddr *net.UDPAddr, localname string, silent, for
 
 			if string(q.Name) != localname {
 				if dest.IsLoopback() && forward != false {
-					sent_id, _ = MakeRecursive(q, rsp);
+					sent_id = SendRecursiveRequest(rsp, q);
 				}
 
 				continue;
 			}
 
+			var rdata []RData;
+
 			switch (q.Type) {
 				case TypeA:
-					an := NewA(local4.IP);
-					rsp.AppendAN(q, an, 120);
+					rdata = append(rdata, NewA(local4.IP));
 
 				case TypeAAAA:
-					an := NewAAAA(local6.IP);
-					rsp.AppendAN(q, an, 120);
+					rdata = append(rdata, NewAAAA(local6.IP));
 
 				case TypeAny:
-					a := NewA(local4.IP);
-					rsp.AppendAN(q, a, 120);
-
-					aaaa := NewAAAA(local6.IP);
-					rsp.AppendAN(q, aaaa, 120);
-
+					rdata = append(rdata, NewA(local4.IP));
+					rdata = append(rdata, NewAAAA(local6.IP));
 				default:
 					continue;
+			}
+
+			for _, rd := range rdata {
+				an := NewAN(q.Name, q.Type, q.Class, 120, rd);
+				rsp.AppendAN(an);
 			}
 		}
 
 		if rsp.Header.ANCount == 0 &&
-		   rsp.Header.Flags.RCode() == RCodeOK {
+		   rsp.Header.Flags.RCode() == RCodeNoError {
 			continue;
 		}
 
@@ -291,30 +297,4 @@ func Serve(p *ipv4.PacketConn, maddr *net.UDPAddr, localname string, silent, for
 			}
 		}
 	}
-}
-
-func MakeRecursive(qd *Question, out *Message) (uint16, error) {
-	if bytes.HasSuffix(qd.Name, []byte("local.")) != true {
-		out.Header.Flags |= RCodeFmtErr;
-		return 0, nil;
-	}
-
-	rand.Seed(time.Now().UTC().UnixNano());
-	id := uint16(rand.Intn(math.MaxUint16));
-
-	req := new(Message);
-	req.Header.Id = id;
-	req.AppendQD(qd);
-
-	rsp, err := SendRequest(req);
-	if err != nil {
-		return 0, fmt.Errorf("Could not send request: %s", err);
-	}
-
-	for _, an := range rsp.Answer {
-		out.Answer = append(out.Answer, an);
-		out.Header.ANCount++;
-	}
-
-	return id, nil;
 }

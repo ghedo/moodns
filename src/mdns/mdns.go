@@ -32,16 +32,42 @@ package mdns
 
 import "net"
 
-func NewQD(name string, t Type, class Class) (*Question) {
+const MDNSAddr = "224.0.0.251:5353";
+
+func NewQD(name []byte, t Type, class Class) (*Question) {
 	qd := new(Question);
 
 	qd.Name = append(qd.Name, name...);
-	qd.Name = append(qd.Name, '.');
 
 	qd.Type  = t;
 	qd.Class = class;
 
 	return qd;
+}
+
+func NewAN(name []byte, t Type, class Class, ttl uint32, rd RData) (*Answer) {
+	if rd == nil {
+		return nil;
+	}
+
+	an := new(Answer);
+
+	an.Name  = append(an.Name, name...);
+
+	switch rd.(type) {
+		case *A:
+			an.Type = TypeA;
+
+		case *AAAA:
+			an.Type = TypeAAAA;
+	}
+
+	an.Class = class;
+	an.TTL   = ttl;
+	an.RData = rd;
+	an.RDLen = rd.Len();
+
+	return an;
 }
 
 func NewA(addr net.IP) *A {
@@ -73,28 +99,7 @@ func (msg *Message) AppendQD(qd *Question) {
 	msg.Header.QDCount++;
 }
 
-func (msg *Message) AppendAN(qd *Question, rdata RData, ttl uint32) {
-	if rdata == nil {
-		return;
-	}
-
-	an := new(Answer);
-
-	an.Name  = qd.Name;
-
-	switch rdata.(type) {
-		case *A:
-			an.Type = TypeA;
-
-		case *AAAA:
-			an.Type = TypeAAAA;
-	}
-
-	an.Class = qd.Class;
-	an.TTL   = ttl;
-	an.RData = rdata;
-	an.RDLen = rdata.Len();
-
+func (msg *Message) AppendAN(an *Answer) {
 	msg.Answer = append(msg.Answer, an);
 	msg.Header.ANCount++;
 }

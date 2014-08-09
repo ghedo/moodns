@@ -46,13 +46,46 @@ const (
 	FlagAD       = 32;
 	FlagCD       = 16;
 
-	RCodeOK      = 0;
-	RCodeFmtErr  = 2;
-	RCodeServErr = 2;
-	RCodeNameErr = 3;
+	RCodeNoError = 0;
+	RCodeFormErr = 1;
+	RCodeServFail= 2;
+	RCodeNXDomain= 3;
 	RCodeNotImpl = 4;
 	RCodeRefused = 5;
 )
+
+func (t Flags) RCode() uint8 {
+	flags := t;
+
+	flags <<= 12;
+	flags >>= 12;
+
+	return uint8(flags);
+}
+
+func (t Flags) RCodeString() string {
+	if t & RCodeFormErr != 0 {
+		return "FORMERROR";
+	}
+
+	if t & RCodeServFail != 0 {
+		return "SERVFAIL";
+	}
+
+	if t & RCodeNXDomain != 0 {
+		return "NXDOMAIN";
+	}
+
+	if t & RCodeNotImpl != 0 {
+		return "NOTIMPL";
+	}
+
+	if t & RCodeRefused != 0 {
+		return "REFUSED";
+	}
+
+	return "NOERROR";
+}
 
 func (t Flags) String() string {
 	var s []string;
@@ -86,15 +119,6 @@ func (t Flags) String() string {
 	}
 
 	return strings.Join(s, " ");
-}
-
-func (t Flags) RCode() uint8 {
-	flags := t;
-
-	flags <<= 12;
-	flags >>= 12;
-
-	return uint8(flags);
 }
 
 type Type uint16;
@@ -175,7 +199,7 @@ func (m *Message) String() string {
 
 	fmt.Fprintf(b, ";;");
 	fmt.Fprintf(b, " opcode: %d,", 255);
-	fmt.Fprintf(b, " status: %d,", 255);
+	fmt.Fprintf(b, " status: %s,", m.Header.Flags.RCodeString());
 	fmt.Fprintf(b, " id: %d", m.Header.Id);
 	fmt.Fprintf(b, "\n");
 
@@ -336,7 +360,6 @@ func (rr *SRV) String() string {
 	                   rr.Priority, rr.Weight, rr.Port, rr.Target);
 }
 
-/* TODO: properly implement OPT? */
 type OPT struct {
 	Code   uint16;
 	OptLen uint16;
