@@ -78,12 +78,12 @@ func NewConn(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error) 
 
 func NewServer(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error) {
 	smaddr, p, err := NewConn(addr, maddr);
-
 	if err != nil {
 		return nil, nil, err;
 	}
 
-	if err = p.JoinGroup(nil, smaddr); err != nil {
+	err = p.JoinGroup(nil, smaddr);
+	if err != nil {
 		return nil, nil, fmt.Errorf("Could not join group: %s", err);
 	}
 
@@ -240,9 +240,11 @@ func Serve(p *ipv4.PacketConn, maddr *net.UDPAddr, localname string, silent, for
 		}
 
 		for _, q := range req.Question {
-			switch (q.Class) {
-				case ClassInet,ClassInet|ClassUnicast,ClassAny:
-				default: continue;
+			switch q.Class {
+				case ClassInet:
+				case ClassInet | ClassUnicast:
+				case ClassAny:
+				default: continue; /* unsupport class */
 			}
 
 			if client.Port != 5353 {
@@ -260,7 +262,7 @@ func Serve(p *ipv4.PacketConn, maddr *net.UDPAddr, localname string, silent, for
 
 			var rdata []RData;
 
-			switch (q.Type) {
+			switch q.Type {
 				case TypeA:
 					rdata = append(rdata, NewA(local4.IP));
 
@@ -275,14 +277,14 @@ func Serve(p *ipv4.PacketConn, maddr *net.UDPAddr, localname string, silent, for
 			}
 
 			for _, rd := range rdata {
-				an := NewAN(q.Name, q.Type, q.Class, 120, rd);
+				an := NewAN(q.Name, q.Class, 120, rd);
 				rsp.AppendAN(an);
 			}
 		}
 
 		if rsp.Header.ANCount == 0 &&
 		   rsp.Header.Flags.RCode() == RCodeNoError {
-			continue;
+			continue; /* no answers and no error, skip */
 		}
 
 		if client.Port == 5353 {

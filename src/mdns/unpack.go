@@ -59,7 +59,7 @@ func Unpack(pkt []byte) (*Message, error) {
 	}
 
 	for i := uint16(0); i < msg.Header.ANCount; i++ {
-		an := new(Answer);
+		an := new(Record);
 
 		err := UnpackStruct(r, an);
 		if err != nil {
@@ -70,7 +70,7 @@ func Unpack(pkt []byte) (*Message, error) {
 	}
 
 	for i := uint16(0); i < msg.Header.NSCount; i++ {
-		an := new(Answer);
+		an := new(Record);
 
 		err := UnpackStruct(r, an);
 		if err != nil {
@@ -81,7 +81,7 @@ func Unpack(pkt []byte) (*Message, error) {
 	}
 
 	for i := uint16(0); i < msg.Header.ARCount; i++ {
-		ar := new(Answer);
+		ar := new(Record);
 
 		err := UnpackStruct(r, ar);
 		if err != nil {

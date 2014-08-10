@@ -45,12 +45,12 @@ func NewQD(name []byte, t Type, class Class) (*Question) {
 	return qd;
 }
 
-func NewAN(name []byte, t Type, class Class, ttl uint32, rd RData) (*Answer) {
+func NewAN(name []byte, class Class, ttl uint32, rd RData) (*Record) {
 	if rd == nil {
 		return nil;
 	}
 
-	an := new(Answer);
+	an := new(Record);
 
 	an.Name  = append(an.Name, name...);
 
@@ -99,7 +99,7 @@ func (msg *Message) AppendQD(qd *Question) {
 	msg.Header.QDCount++;
 }
 
-func (msg *Message) AppendAN(an *Answer) {
+func (msg *Message) AppendAN(an *Record) {
 	msg.Answer = append(msg.Answer, an);
 	msg.Header.ANCount++;
 }

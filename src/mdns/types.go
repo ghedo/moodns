@@ -137,7 +137,7 @@ const (
 )
 
 func (t Type) MakeRR() RData {
-	switch (t) {
+	switch t {
 		case TypeNone:  return nil;
 		case TypeA:     return new(A);
 		case TypeCNAME: return new(CNAME);
@@ -153,7 +153,7 @@ func (t Type) MakeRR() RData {
 }
 
 func (t Type) String() string {
-	switch (t) {
+	switch t {
 		case TypeNone:  return "NONE";
 		case TypeA:     return "A";
 		case TypeCNAME: return "CNAME";
@@ -178,7 +178,7 @@ const (
 )
 
 func (c Class) String() string {
-	switch (c) {
+	switch c {
 		case ClassInet, ClassInet | ClassUnicast: return "IN";
 		case ClassNone: return "NONE";
 		case ClassAny:  return "ANY";
@@ -189,9 +189,9 @@ func (c Class) String() string {
 type Message struct {
 	Header     Header;
 	Question   []*Question;
-	Answer     []*Answer;
-	Authority  []*Answer;
-	Additional []*Answer;
+	Answer     []*Record;
+	Authority  []*Record;
+	Additional []*Record;
 }
 
 func (m *Message) String() string {
@@ -257,7 +257,7 @@ type Question struct {
 	Class Class;
 }
 
-type Answer struct {
+type Record struct {
 	Name  []byte `mdns:"name"`;
 	Type  Type;
 	Class Class;
