@@ -33,7 +33,6 @@ package main
 import "log"
 import "os"
 import "strings"
-import "sync"
 
 import "github.com/docopt/docopt-go"
 
@@ -50,8 +49,6 @@ Options:
   -r, --enable-multicast-forward        Enable forwarding of unicast requests to multicast.
   -s, --silent                          Print fatal errors only.
   -h, --help                            Show the program's help message and exit.`
-
-	var wg sync.WaitGroup;
 
 	args, err := docopt.Parse(usage, nil, true, "", false)
 	if err != nil {
@@ -75,12 +72,8 @@ Options:
 			log.Fatal("Error starting server: ", err);
 		}
 
-		wg.Add(1);
-		go func() {
-			mdns.Serve(server, maddr, localname, silent, forward);
-			wg.Done();
-		}()
+		go mdns.Serve(server, maddr, localname, silent, forward);
 	}
 
-	wg.Wait();
+	select {}
 }
