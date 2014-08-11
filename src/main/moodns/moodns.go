@@ -52,7 +52,7 @@ Options:
 
 	args, err := docopt.Parse(usage, nil, true, "", false)
 	if err != nil {
-		log.Fatal("Invalid arguments: ", err);
+		log.Fatalf("Invalid arguments: %s", err);
 	}
 
 	listen := args["--listen"].(string);
@@ -69,7 +69,7 @@ Options:
 	for _, addr := range strings.Split(listen, ",") {
 		maddr, server, err := mdns.NewServer(addr, mdns.MDNSAddr);
 		if err != nil {
-			log.Fatal("Error starting server: ", err);
+			log.Fatalf("Error starting server: %s", err);
 		}
 
 		go mdns.Serve(server, maddr, localname, silent, forward);

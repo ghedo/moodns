@@ -47,7 +47,7 @@ Options:
 
 	args, err := docopt.Parse(usage, nil, true, "", false)
 	if err != nil {
-		log.Fatal("Invalid arguments: ", err);
+		log.Fatalf("Invalid arguments: %s", err);
 	}
 
 	name := args["<name>"].(string);
@@ -64,7 +64,7 @@ Options:
 
 	rsp, err := mdns.SendRequest(req);
 	if err != nil {
-		log.Fatal("Error sending request: ", err);
+		log.Fatalf("Error sending request: %s", err);
 	}
 
 	log.Println(rsp);
