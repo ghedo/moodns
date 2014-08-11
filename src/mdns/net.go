@@ -270,9 +270,14 @@ func Serve(p *ipv4.PacketConn, maddr *net.UDPAddr, localname string, silent, for
 				case TypeAAAA:
 					rdata = append(rdata, NewAAAA(local6.IP));
 
+				case TypeHINFO:
+					rdata = append(rdata, NewHINFO());
+
 				case TypeAny:
 					rdata = append(rdata, NewA(local4.IP));
 					rdata = append(rdata, NewAAAA(local6.IP));
+					rdata = append(rdata, NewHINFO());
+
 				default:
 					continue;
 			}

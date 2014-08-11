@@ -166,7 +166,7 @@ func PackString(w io.Writer, str string) error {
 		return fmt.Errorf("write: %s", err);
 	}
 
-	err = binary.Write(w, binary.BigEndian, str);
+	err = binary.Write(w, binary.BigEndian, []byte(str));
 	if err != nil {
 		return fmt.Errorf("write: %s", err);
 	}

@@ -31,6 +31,8 @@
 package mdns
 
 import "net"
+import "strings"
+import "syscall"
 
 const MDNSAddr = "224.0.0.251:5353";
 
@@ -60,6 +62,9 @@ func NewAN(name []byte, class Class, ttl uint32, rd RData) (*Record) {
 
 		case *AAAA:
 			an.Type = TypeAAAA;
+
+		case *HINFO:
+			an.Type = TypeHINFO;
 	}
 
 	an.Class = class;
@@ -92,6 +97,40 @@ func NewCNAME(cname string) *CNAME {
 	a.CNAME = []byte(cname);
 
 	return a;
+}
+
+func NewHINFO() *HINFO {
+	var uname syscall.Utsname;
+
+	hinfo := new(HINFO)
+
+	err := syscall.Uname(&uname);
+	if err != nil {
+		return nil;
+	}
+
+	var cpu, os []byte;
+
+	for _, c := range uname.Machine {
+		if c == 0 {
+			break;
+		}
+
+		cpu = append(cpu, byte(c));
+	}
+
+	for _, c := range uname.Sysname {
+		if c == 0 {
+			break;
+		}
+
+		os = append(os, byte(c));
+	}
+
+	hinfo.CPU = strings.ToUpper(string(cpu));
+	hinfo.OS  = strings.ToUpper(string(os));
+
+	return hinfo;
 }
 
 func (msg *Message) AppendQD(qd *Question) {

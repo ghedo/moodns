@@ -317,7 +317,7 @@ func (rr *HINFO) Len() uint16 {
 }
 
 func (rr *HINFO) String() string {
-	return rr.OS + ", " + rr.CPU;
+	return "\"" + rr.CPU + "\" " + rr.OS + "\"";
 }
 
 type TXT struct {
