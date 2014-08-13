@@ -1,9 +1,12 @@
 [Unit]
 Description=Minimal multicast DNS server
 Documentation=man:moodns(1)
-After=network-online.target
-Wants=network-online.target
+After=network.target
+Wants=network.target
 
 [Service]
 Type=simple
 ExecStart=/usr/bin/moodns
+
+[Install]
+WantedBy=multi-user.target
