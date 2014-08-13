@@ -1,6 +1,8 @@
 [Unit]
 Description=Minimal multicast DNS server
 Documentation=man:moodns(1)
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
