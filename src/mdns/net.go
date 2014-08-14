@@ -37,8 +37,12 @@ import "math"
 import "math/rand"
 import "net"
 import "time"
+import "syscall"
+import "unsafe"
 
 import "code.google.com/p/go.net/ipv4"
+
+import "netlink"
 
 func NewConn(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error) {
 	saddr, err := net.ResolveUDPAddr("udp", addr);
@@ -82,10 +86,7 @@ func NewServer(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error
 		return nil, nil, err;
 	}
 
-	err = p.JoinGroup(nil, smaddr);
-	if err != nil {
-		return nil, nil, fmt.Errorf("Could not join group: %s", err);
-	}
+	go MonitorNetwork(p, smaddr);
 
 	return smaddr, p, nil;
 }
@@ -299,4 +300,69 @@ func Serve(p *ipv4.PacketConn, maddr *net.UDPAddr, localname string, silent, for
 			}
 		}
 	}
+}
+
+func MonitorNetwork(p *ipv4.PacketConn, group net.Addr) error {
+	l, _ := netlink.ListenNetlink();
+
+	l.SendRouteRequest(syscall.RTM_GETADDR, syscall.AF_UNSPEC);
+
+	for {
+		msgs, err := l.ReadMsgs();
+		if err != nil {
+			return fmt.Errorf("Could not read netlink: %s", err);
+		}
+
+		for _, m := range msgs {
+			if netlink.IsNewAddr(&m) {
+				err := JoinGroup(p, &m, group);
+				if err != nil {
+					return err;
+				}
+			}
+
+			if netlink.IsDelAddr(&m) {
+				err := JoinGroup(p, &m, group);
+				if err != nil {
+					return err;
+				}
+			}
+		}
+	}
+}
+
+func JoinGroup(p *ipv4.PacketConn, msg *syscall.NetlinkMessage, group net.Addr) error {
+	ifaddrmsg := (*syscall.IfAddrmsg)(unsafe.Pointer(&msg.Data[0]));
+
+	if netlink.IsRelevant(ifaddrmsg) != true {
+		return nil;
+	}
+
+	ifi, err := net.InterfaceByIndex(int(ifaddrmsg.Index));
+	if err != nil {
+		return fmt.Errorf("Could not get interface: %s", err);
+	}
+
+	err = p.JoinGroup(ifi, group);
+	if err != nil {
+		return fmt.Errorf("Could not join group: %s", err);
+	}
+
+	return nil;
+}
+
+func LeaveGroup(p *ipv4.PacketConn, msg *syscall.NetlinkMessage, group net.Addr) error {
+	ifaddrmsg := (*syscall.IfAddrmsg)(unsafe.Pointer(&msg.Data[0]));
+
+	ifi, err := net.InterfaceByIndex(int(ifaddrmsg.Index));
+	if err != nil {
+		return fmt.Errorf("Could not get interface: %s", err);
+	}
+
+	err = p.LeaveGroup(ifi, group);
+	if err != nil {
+		return fmt.Errorf("Could not join group: %s", err);
+	}
+
+	return nil;
 }
