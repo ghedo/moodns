@@ -322,7 +322,7 @@ func MonitorNetwork(p *ipv4.PacketConn, group net.Addr) error {
 			}
 
 			if netlink.IsDelAddr(&m) {
-				err := JoinGroup(p, &m, group);
+				err := LeaveGroup(p, &m, group);
 				if err != nil {
 					return err;
 				}
@@ -361,7 +361,7 @@ func LeaveGroup(p *ipv4.PacketConn, msg *syscall.NetlinkMessage, group net.Addr)
 
 	err = p.LeaveGroup(ifi, group);
 	if err != nil {
-		return fmt.Errorf("Could not join group: %s", err);
+		return fmt.Errorf("Could not leave group: %s", err);
 	}
 
 	return nil;
