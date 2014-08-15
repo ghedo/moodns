@@ -30,9 +30,6 @@
 
 package netlink
 
-// #include <linux/rtnetlink.h>
-import "C"
-
 import "fmt"
 import "syscall"
 import "unsafe"
@@ -43,9 +40,9 @@ type NetlinkListener struct {
 }
 
 func ListenNetlink() (*NetlinkListener, error) {
-	groups := C.RTMGRP_LINK        |
-	          C.RTMGRP_IPV4_IFADDR |
-	          C.RTMGRP_IPV6_IFADDR;
+	groups := syscall.RTNLGRP_LINK        |
+	          syscall.RTNLGRP_IPV4_IFADDR |
+	          syscall.RTNLGRP_IPV6_IFADDR;
 
 	s, err := syscall.Socket(syscall.AF_NETLINK, syscall.SOCK_DGRAM, syscall.NETLINK_ROUTE);
 	if err != nil {
@@ -125,7 +122,7 @@ func newNetlinkRouteRequest(proto, seq, family int) []byte {
 }
 
 func IsNewAddr(msg *syscall.NetlinkMessage) bool {
-	if msg.Header.Type == C.RTM_NEWADDR {
+	if msg.Header.Type == syscall.RTM_NEWADDR {
 		return true;
 	}
 
@@ -133,7 +130,7 @@ func IsNewAddr(msg *syscall.NetlinkMessage) bool {
 }
 
 func IsDelAddr(msg *syscall.NetlinkMessage) bool {
-	if msg.Header.Type == C.RTM_DELADDR {
+	if msg.Header.Type == syscall.RTM_DELADDR {
 		return true;
 	}
 
@@ -141,8 +138,8 @@ func IsDelAddr(msg *syscall.NetlinkMessage) bool {
 }
 
 func IsRelevant(msg *syscall.IfAddrmsg) bool {
-	if msg.Scope == C.RT_SCOPE_UNIVERSE ||
-	   msg.Scope == C.RT_SCOPE_SITE {
+	if msg.Scope == syscall.RT_SCOPE_UNIVERSE ||
+	   msg.Scope == syscall.RT_SCOPE_SITE {
 		return true;
 	}
 
