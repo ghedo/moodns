@@ -28,8 +28,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// +build linux
-
 package netlink
 
 // #include <linux/rtnetlink.h>
