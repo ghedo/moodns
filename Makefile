@@ -26,6 +26,6 @@ release-all: BUILDTAGS=release
 release-all: all
 
 clean:
-	go clean -i main/moodns main/moodns-resolve mdns
+	go clean -i main/moodns main/moodns-resolve mdns netlink
 
 .PHONY: all moodns deps clean
