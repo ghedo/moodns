@@ -44,15 +44,18 @@ import "code.google.com/p/go.net/ipv4"
 
 import "netlink"
 
-func NewConn(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error) {
+const maddr4 = "224.0.0.251:5353";
+const maddr6 = "[FF02::FB]:5353";
+
+func NewConn(addr string) (*net.UDPAddr, *ipv4.PacketConn, error) {
 	saddr, err := net.ResolveUDPAddr("udp", addr);
 	if err != nil {
 		return nil, nil, fmt.Errorf("Could not resolve address '%s': %s", addr, err);
 	}
 
-	smaddr, err := net.ResolveUDPAddr("udp", maddr);
+	smaddr, err := net.ResolveUDPAddr("udp", maddr4);
 	if err != nil {
-		return nil, nil, fmt.Errorf("Could not resolve address '%s': %s", maddr, err);
+		return nil, nil, fmt.Errorf("Could not resolve address '%s': %s", maddr4, err);
 	}
 
 	udp, err := net.ListenUDP("udp", saddr);
@@ -80,8 +83,8 @@ func NewConn(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error) 
 	return smaddr, p, nil;
 }
 
-func NewServer(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error) {
-	smaddr, p, err := NewConn(addr, maddr);
+func NewServer(addr string) (*net.UDPAddr, *ipv4.PacketConn, error) {
+	smaddr, p, err := NewConn(addr);
 	if err != nil {
 		return nil, nil, err;
 	}
@@ -91,8 +94,8 @@ func NewServer(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error
 	return smaddr, p, nil;
 }
 
-func NewClient(addr string, maddr string) (*net.UDPAddr, *ipv4.PacketConn, error) {
-	return NewConn(addr, maddr);
+func NewClient(addr string) (*net.UDPAddr, *ipv4.PacketConn, error) {
+	return NewConn(addr);
 }
 
 func Read(p *ipv4.PacketConn) (*Message, net.IP, *net.IPNet, *net.IPNet, *net.UDPAddr, error) {
@@ -151,7 +154,7 @@ func Write(p *ipv4.PacketConn, addr *net.UDPAddr, msg *Message) (error) {
 }
 
 func SendRequest(req *Message) (*Message, error) {
-	maddr, client, err := NewClient("0.0.0.0:0", MDNSAddr);
+	maddr, client, err := NewClient("0.0.0.0:0");
 	if err != nil {
 		return nil, fmt.Errorf("Could not create client: %s", err);
 	}

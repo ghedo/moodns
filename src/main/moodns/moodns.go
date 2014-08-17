@@ -67,7 +67,7 @@ Options:
 	forward   := args["--enable-multicast-forward"].(bool);
 
 	for _, addr := range strings.Split(listen, ",") {
-		maddr, server, err := mdns.NewServer(addr, mdns.MDNSAddr);
+		maddr, server, err := mdns.NewServer(addr);
 		if err != nil {
 			log.Fatalf("Error starting server: %s", err);
 		}

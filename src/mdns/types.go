@@ -34,6 +34,7 @@ import "bytes"
 import "fmt"
 import "net"
 import "strings"
+import "syscall"
 
 type Flags uint16;
 
@@ -194,6 +195,16 @@ type Message struct {
 	Additional []*Record;
 }
 
+func (msg *Message) AppendQD(qd *Question) {
+	msg.Question = append(msg.Question, qd);
+	msg.Header.QDCount++;
+}
+
+func (msg *Message) AppendAN(an *Record) {
+	msg.Answer = append(msg.Answer, an);
+	msg.Header.ANCount++;
+}
+
 func (m *Message) String() string {
 	b := new(bytes.Buffer);
 
@@ -257,6 +268,17 @@ type Question struct {
 	Class Class;
 }
 
+func NewQD(name []byte, t Type, class Class) (*Question) {
+	qd := new(Question);
+
+	qd.Name = append(qd.Name, name...);
+
+	qd.Type  = t;
+	qd.Class = class;
+
+	return qd;
+}
+
 type Record struct {
 	Name  []byte `mdns:"name"`;
 	Type  Type;
@@ -266,6 +288,34 @@ type Record struct {
 	RData RData `mdns:"rdata"`;
 }
 
+func NewAN(name []byte, class Class, ttl uint32, rd RData) (*Record) {
+	if rd == nil {
+		return nil;
+	}
+
+	an := new(Record);
+
+	an.Name  = append(an.Name, name...);
+
+	switch rd.(type) {
+		case *A:
+			an.Type = TypeA;
+
+		case *AAAA:
+			an.Type = TypeAAAA;
+
+		case *HINFO:
+			an.Type = TypeHINFO;
+	}
+
+	an.Class = class;
+	an.TTL   = ttl;
+	an.RData = rd;
+	an.RDLen = rd.Len();
+
+	return an;
+}
+
 type RData interface {
 	Len() uint16;
 	String() string;
@@ -273,6 +323,14 @@ type RData interface {
 
 type A struct {
 	Addr net.IP `mdns:"a"`;
+}
+
+func NewA(addr net.IP) *A {
+	a := new(A);
+
+	a.Addr = addr.To4();
+
+	return a;
 }
 
 func (rr *A) Len() uint16 {
@@ -285,6 +343,14 @@ func (rr *A) String() string {
 
 type CNAME struct {
 	CNAME []byte `mdns:"name"`;
+}
+
+func NewCNAME(cname string) *CNAME {
+	a := new(CNAME);
+
+	a.CNAME = []byte(cname);
+
+	return a;
 }
 
 func (rr *CNAME) Len() uint16 {
@@ -312,6 +378,40 @@ type HINFO struct {
 	OS  string;
 }
 
+func NewHINFO() *HINFO {
+	var uname syscall.Utsname;
+
+	hinfo := new(HINFO)
+
+	err := syscall.Uname(&uname);
+	if err != nil {
+		return nil;
+	}
+
+	var cpu, os []byte;
+
+	for _, c := range uname.Machine {
+		if c == 0 {
+			break;
+		}
+
+		cpu = append(cpu, byte(c));
+	}
+
+	for _, c := range uname.Sysname {
+		if c == 0 {
+			break;
+		}
+
+		os = append(os, byte(c));
+	}
+
+	hinfo.CPU = strings.ToUpper(string(cpu));
+	hinfo.OS  = strings.ToUpper(string(os));
+
+	return hinfo;
+}
+
 func (rr *HINFO) Len() uint16 {
 	return uint16(len(rr.CPU) + 1 + len(rr.OS) + 1);
 }
@@ -334,6 +434,14 @@ func (rr *TXT) String() string {
 
 type AAAA struct {
 	Addr net.IP `mdns:"aaaa"`;
+}
+
+func NewAAAA(addr net.IP) *AAAA {
+	a := new(AAAA);
+
+	a.Addr = addr.To16();
+
+	return a;
 }
 
 func (rr *AAAA) Len() uint16 {
