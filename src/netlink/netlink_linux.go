@@ -35,113 +35,111 @@ import "syscall"
 import "unsafe"
 
 type NetlinkListener struct {
-	fd int;
-	sa *syscall.SockaddrNetlink;
+	fd int
+	sa *syscall.SockaddrNetlink
 }
 
 func ListenNetlink() (*NetlinkListener, error) {
-	groups := syscall.RTNLGRP_LINK        |
+	groups := syscall.RTNLGRP_LINK |
 	          syscall.RTNLGRP_IPV4_IFADDR |
-	          syscall.RTNLGRP_IPV6_IFADDR;
+	          syscall.RTNLGRP_IPV6_IFADDR
 
-	s, err := syscall.Socket(syscall.AF_NETLINK, syscall.SOCK_DGRAM, syscall.NETLINK_ROUTE);
+	s, err := syscall.Socket(syscall.AF_NETLINK, syscall.SOCK_DGRAM,
+	                         syscall.NETLINK_ROUTE)
 	if err != nil {
-		return nil, fmt.Errorf("socket: %s", err);
+		return nil, fmt.Errorf("socket: %s", err)
 	}
 
-	saddr := new(syscall.SockaddrNetlink);
-	saddr.Family = syscall.AF_NETLINK;
-	saddr.Pid    = uint32(0);
-	saddr.Groups = uint32(groups);
-
-	err = syscall.Bind(s, saddr);
-	if err != nil {
-		return nil, fmt.Errorf("bind: %s", err);
+	saddr := &syscall.SockaddrNetlink{
+		Family: syscall.AF_NETLINK,
+		Pid:    uint32(0),
+		Groups: uint32(groups),
 	}
 
-	l := new(NetlinkListener);
-	l.fd = s;
-	l.sa = saddr;
+	err = syscall.Bind(s, saddr)
+	if err != nil {
+		return nil, fmt.Errorf("bind: %s", err)
+	}
 
-	return l, nil;
+	return &NetlinkListener{ fd: s, sa: saddr }, nil
 }
 
 func (l *NetlinkListener) ReadMsgs() ([]syscall.NetlinkMessage, error) {
 	defer func() {
-		recover();
-	}();
+		recover()
+	}()
 
-	pkt := make([]byte, 2048);
+	pkt := make([]byte, 2048)
 
-	n, err := syscall.Read(l.fd, pkt);
+	n, err := syscall.Read(l.fd, pkt)
 	if err != nil {
-		return nil, fmt.Errorf("read: %s", err);
+		return nil, fmt.Errorf("read: %s", err)
 	}
 
-	msgs, err := syscall.ParseNetlinkMessage(pkt[:n]);
+	msgs, err := syscall.ParseNetlinkMessage(pkt[:n])
 	if err != nil {
-		return nil, fmt.Errorf("parse: %s", err);
+		return nil, fmt.Errorf("parse: %s", err)
 	}
 
-	return msgs, nil;
+	return msgs, nil
 }
 
 func (l *NetlinkListener) SendRouteRequest(proto, family int) error {
-	wb := newNetlinkRouteRequest(proto, 1, family);
+	wb := newNetlinkRouteRequest(proto, 1, family)
 
-	err := syscall.Sendto(l.fd, wb, 0, l.sa);
+	err := syscall.Sendto(l.fd, wb, 0, l.sa)
 	if err != nil {
-		return err;
+		return err
 	}
 
-	return nil;
+	return nil
 }
 
 func toWireFormat(rr *syscall.NetlinkRouteRequest) []byte {
-	b := make([]byte, rr.Header.Len);
+	b := make([]byte, rr.Header.Len)
 
-	*(*uint32)(unsafe.Pointer(&b[0:4][0])) = rr.Header.Len;
-	*(*uint16)(unsafe.Pointer(&b[4:6][0])) = rr.Header.Type;
-	*(*uint16)(unsafe.Pointer(&b[6:8][0])) = rr.Header.Flags;
-	*(*uint32)(unsafe.Pointer(&b[8:12][0])) = rr.Header.Seq;
-	*(*uint32)(unsafe.Pointer(&b[12:16][0])) = rr.Header.Pid;
+	*(*uint32)(unsafe.Pointer(&b[0:4][0]))   = rr.Header.Len
+	*(*uint16)(unsafe.Pointer(&b[4:6][0]))   = rr.Header.Type
+	*(*uint16)(unsafe.Pointer(&b[6:8][0]))   = rr.Header.Flags
+	*(*uint32)(unsafe.Pointer(&b[8:12][0]))  = rr.Header.Seq
+	*(*uint32)(unsafe.Pointer(&b[12:16][0])) = rr.Header.Pid
 
-	b[16] = byte(rr.Data.Family);
-	return b;
+	b[16] = byte(rr.Data.Family)
+	return b
 }
 
 func newNetlinkRouteRequest(proto, seq, family int) []byte {
-	rr := &syscall.NetlinkRouteRequest{};
-	rr.Header.Len = uint32(syscall.NLMSG_HDRLEN + syscall.SizeofRtGenmsg);
-	rr.Header.Type = uint16(proto);
-	rr.Header.Flags = syscall.NLM_F_DUMP | syscall.NLM_F_REQUEST;
-	rr.Header.Seq = uint32(seq);
-	rr.Data.Family = uint8(family);
+	rr := &syscall.NetlinkRouteRequest{}
+	rr.Header.Len   = uint32(syscall.NLMSG_HDRLEN + syscall.SizeofRtGenmsg)
+	rr.Header.Type  = uint16(proto)
+	rr.Header.Flags = syscall.NLM_F_DUMP | syscall.NLM_F_REQUEST
+	rr.Header.Seq   = uint32(seq)
+	rr.Data.Family  = uint8(family)
 
-	return toWireFormat(rr);
+	return toWireFormat(rr)
 }
 
 func IsNewAddr(msg *syscall.NetlinkMessage) bool {
 	if msg.Header.Type == syscall.RTM_NEWADDR {
-		return true;
+		return true
 	}
 
-	return false;
+	return false
 }
 
 func IsDelAddr(msg *syscall.NetlinkMessage) bool {
 	if msg.Header.Type == syscall.RTM_DELADDR {
-		return true;
+		return true
 	}
 
-	return false;
+	return false
 }
 
 func IsRelevant(msg *syscall.IfAddrmsg) bool {
 	if msg.Scope == syscall.RT_SCOPE_UNIVERSE ||
 	   msg.Scope == syscall.RT_SCOPE_SITE {
-		return true;
+		return true
 	}
 
-	return false;
+	return false
 }

@@ -37,7 +37,7 @@ import "github.com/docopt/docopt-go"
 import "mdns"
 
 func main() {
-	log.SetFlags(0);
+	log.SetFlags(0)
 
 	usage := `Usage: moodns-resolve [options] <name>
 
@@ -47,25 +47,25 @@ Options:
 
 	args, err := docopt.Parse(usage, nil, true, "", false)
 	if err != nil {
-		log.Fatalf("Invalid arguments: %s", err);
+		log.Fatalf("Invalid arguments: %s", err)
 	}
 
-	name := args["<name>"].(string);
+	name := args["<name>"].(string)
 
-	req := new(mdns.Message);
+	req := new(mdns.Message)
 
-	qname := []byte(name + ".");
+	qname := []byte(name + ".")
 
-	req.AppendQD(mdns.NewQD(qname, mdns.TypeA, mdns.ClassInet));
+	req.AppendQD(mdns.NewQD(qname, mdns.TypeA, mdns.ClassInet))
 
 	if args["--ipv6"].(bool) {
-		req.AppendQD(mdns.NewQD(qname, mdns.TypeAAAA, mdns.ClassInet));
+		req.AppendQD(mdns.NewQD(qname, mdns.TypeAAAA, mdns.ClassInet))
 	}
 
-	rsp, err := mdns.SendRequest(req);
+	rsp, err := mdns.SendRequest(req)
 	if err != nil {
-		log.Fatalf("Error sending request: %s", err);
+		log.Fatalf("Error sending request: %s", err)
 	}
 
-	log.Println(rsp);
+	log.Println(rsp)
 }

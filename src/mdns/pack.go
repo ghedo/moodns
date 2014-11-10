@@ -37,139 +37,139 @@ import "io"
 import "reflect"
 
 func Pack(msg *Message) ([]byte, error) {
-	b := bytes.NewBuffer([]byte{});
+	b := bytes.NewBuffer([]byte{})
 
-	err := PackStruct(b, &msg.Header);
+	err := PackStruct(b, &msg.Header)
 	if err != nil {
-		return nil, fmt.Errorf("Could not pack header: %s", err);
+		return nil, fmt.Errorf("Could not pack header: %s", err)
 	}
 
 	for i := uint16(0); i < msg.Header.QDCount; i++ {
-		err := PackStruct(b, msg.Question[i]);
+		err := PackStruct(b, msg.Question[i])
 		if err != nil {
-			return nil, fmt.Errorf("Could not pack qd: %s", err);
+			return nil, fmt.Errorf("Could not pack qd: %s", err)
 		}
 	}
 
 	for i := uint16(0); i < msg.Header.ANCount; i++ {
-		err := PackStruct(b, msg.Answer[i]);
+		err := PackStruct(b, msg.Answer[i])
 		if err != nil {
-			return nil, fmt.Errorf("Could not pack an: %s", err);
+			return nil, fmt.Errorf("Could not pack an: %s", err)
 		}
 	}
 
 	for i := uint16(0); i < msg.Header.NSCount; i++ {
-		err := PackStruct(b, msg.Authority[i]);
+		err := PackStruct(b, msg.Authority[i])
 		if err != nil {
-			return nil, fmt.Errorf("Could not pack ns: %s", err);
+			return nil, fmt.Errorf("Could not pack ns: %s", err)
 		}
 	}
 
 	for i := uint16(0); i < msg.Header.ARCount; i++ {
-		err := PackStruct(b, msg.Additional[i]);
+		err := PackStruct(b, msg.Additional[i])
 		if err != nil {
-			return nil, fmt.Errorf("Could not pack ar: %s", err);
+			return nil, fmt.Errorf("Could not pack ar: %s", err)
 		}
 	}
 
-	return b.Bytes(), nil;
+	return b.Bytes(), nil
 }
 
 func PackStruct(r io.Writer, data interface{}) error {
-	value := reflect.ValueOf(data).Elem();
+	value := reflect.ValueOf(data).Elem()
 
 	for i := 0; i < value.NumField(); i++ {
 		field := value.Field(i)
-		kind  := field.Kind();
-		tag   := value.Type().Field(i).Tag;
+		kind  := field.Kind()
+		tag   := value.Type().Field(i).Tag
 
 		switch {
-			case tag == `mdns:"name"`:
-				name := field.Bytes();
+		case tag == `mdns:"name"`:
+			name := field.Bytes()
 
-				err := PackName(r, name);
+			err := PackName(r, name)
+			if err != nil {
+				return fmt.Errorf("name: %s", err)
+			}
+
+		case tag == `mdns:"a"` || tag == `mdns:"aaaa"`:
+			for i := 0; i < field.Len(); i++ {
+				b := byte(field.Index(i).Uint())
+
+				err := binary.Write(
+					r, binary.BigEndian, &b,
+				)
+
 				if err != nil {
-					return fmt.Errorf("name: %s", err);
+					return fmt.Errorf("write: %s", err)
 				}
+			}
 
-			case tag == `mdns:"a"` || tag == `mdns:"aaaa"`:
-				for i := 0; i < field.Len(); i++ {
-					b := byte(field.Index(i).Uint());
+		case kind == reflect.Uint16:
+			v := uint16(field.Uint())
 
-					err := binary.Write(
-						r, binary.BigEndian, &b,
-					);
+			err := binary.Write(r, binary.BigEndian, &v)
+			if err != nil {
+				return fmt.Errorf("write: %s", err)
+			}
 
-					if err != nil {
-						return fmt.Errorf("write: %s", err);
-					}
-				}
+		case kind == reflect.Uint32:
+			v := uint32(field.Uint())
 
-			case kind == reflect.Uint16:
-				v := uint16(field.Uint());
+			err := binary.Write(r, binary.BigEndian, &v)
+			if err != nil {
+				return fmt.Errorf("write: %s", err)
+			}
 
-				err := binary.Write(r, binary.BigEndian, &v);
-				if err != nil {
-					return fmt.Errorf("write: %s", err);
-				}
+		case kind == reflect.String:
+			str := field.String()
 
-			case kind == reflect.Uint32:
-				v := uint32(field.Uint());
+			err := PackString(r, str)
+			if err != nil {
+				return fmt.Errorf("string: %s", err)
+			}
 
-				err := binary.Write(r, binary.BigEndian, &v);
-				if err != nil {
-					return fmt.Errorf("write: %s", err);
-				}
-
-			case kind == reflect.String:
-				str := field.String();
-
-				err := PackString(r, str);
-				if err != nil {
-					return fmt.Errorf("string: %s", err);
-				}
-
-			case kind == reflect.Interface||kind == reflect.Struct:
-				err := PackStruct(r, field.Interface());
-				if err != nil {
-					return fmt.Errorf("struct: %s", err);
-				}
+		case kind == reflect.Interface || kind == reflect.Struct:
+			err := PackStruct(r, field.Interface())
+			if err != nil {
+				return fmt.Errorf("struct: %s", err)
+			}
 		}
 	}
 
-	return nil;
+	return nil
 }
 
 func PackName(w io.Writer, name []byte) error {
 	for _, label := range bytes.Split(name, []byte{'.'}) {
-		l := uint8(len(label));
+		l := uint8(len(label))
 
-		err := binary.Write(w, binary.BigEndian, &l);
+		err := binary.Write(w, binary.BigEndian, &l)
 		if err != nil {
-			return fmt.Errorf("write: %s", err);
+			return fmt.Errorf("write: %s", err)
 		}
 
-		err = binary.Write(w, binary.BigEndian, label);
+		err = binary.Write(w, binary.BigEndian, label)
 		if err != nil {
-			return fmt.Errorf("write: %s", err);
+			return fmt.Errorf("write: %s", err)
 		}
 	}
 
-	return nil;
+	return nil
 }
 
 func PackString(w io.Writer, str string) error {
-	l := uint8(len(str));
+	l := uint8(len(str))
 
-	err := binary.Write(w, binary.BigEndian, &l);
+	err := binary.Write(w, binary.BigEndian, &l)
 	if err != nil {
-		return fmt.Errorf("write: %s", err);
+		return fmt.Errorf("write: %s", err)
 	}
 
-	err = binary.Write(w, binary.BigEndian, []byte(str));
+	err = binary.Write(w, binary.BigEndian, []byte(str))
 	if err != nil {
-		return fmt.Errorf("write: %s", err);
+		return fmt.Errorf("write: %s", err)
 	}
 
-	return nil;
+	return nil
 }
