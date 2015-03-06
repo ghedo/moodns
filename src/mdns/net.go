@@ -102,27 +102,43 @@ func NewClient(addr string) (*net.UDPAddr, *ipv4.PacketConn, error) {
 	return NewConn(addr)
 }
 
-func Read(p *ipv4.PacketConn) (*Message, net.IP, *net.IPNet, *net.IPNet, *net.UDPAddr, error) {
+func Read(p *ipv4.PacketConn) (*Message, *net.IPNet, *net.IPNet, *net.UDPAddr, bool, error) {
 	var local4 *net.IPNet
 	var local6 *net.IPNet
+
+	var ifi *net.Interface
+
+	var loopback bool
 
 	pkt := make([]byte, 9000)
 
 	n, cm, from, err := p.ReadFrom(pkt)
 	if err != nil {
-		return nil, nil, nil, nil, nil,
+		return nil, nil, nil, nil, false,
 		  fmt.Errorf("Could not read: %s", err)
 	}
 
-	ifi, err := net.InterfaceByIndex(cm.IfIndex)
-	if err != nil {
-		return nil, nil, nil, nil, nil,
-		  fmt.Errorf("Could not find if: %s", err)
+	if cm == nil {
+		ifi, err = net.InterfaceByName("lo")
+		if err != nil {
+			return nil, nil, nil, nil, true,
+			  fmt.Errorf("Could not find if: %s", err)
+		}
+
+		loopback = true
+	} else {
+		ifi, err = net.InterfaceByIndex(cm.IfIndex)
+		if err != nil {
+			return nil, nil, nil, nil, false,
+			  fmt.Errorf("Could not find if: %s", err)
+		}
+
+		loopback = false
 	}
 
 	addrs, err := ifi.Addrs()
 	if err != nil {
-		return nil, nil, nil, nil, nil,
+		return nil, nil, nil, nil, loopback,
 		  fmt.Errorf("Could not find addrs: %s", err)
 	}
 
@@ -136,11 +152,11 @@ func Read(p *ipv4.PacketConn) (*Message, net.IP, *net.IPNet, *net.IPNet, *net.UD
 
 	req, err := Unpack(pkt[:n])
 	if err != nil {
-		return nil, nil, nil, nil, nil,
+		return nil, nil, nil, nil, loopback,
 		  fmt.Errorf("Could not unpack request: %s", err)
 	}
 
-	return req, cm.Dst, local4, local6, from.(*net.UDPAddr), err
+	return req, local4, local6, from.(*net.UDPAddr), loopback, err
 }
 
 func Write(p *ipv4.PacketConn, addr *net.UDPAddr, msg *Message) error {
@@ -217,7 +233,7 @@ func Serve(p *ipv4.PacketConn, maddr *net.UDPAddr, localname string, silent, for
 	var sent_id uint16
 
 	for {
-		req, dest, local4, local6, client, err := Read(p)
+		req, local4, local6, client, loopback, err := Read(p)
 		if err != nil {
 			if silent != true {
 				log.Println("Error reading request: ", err)
@@ -263,7 +279,7 @@ func Serve(p *ipv4.PacketConn, maddr *net.UDPAddr, localname string, silent, for
 			}
 
 			if string(q.Name) != localname {
-				if dest.IsLoopback() && forward != false {
+				if loopback && forward != false {
 					sent_id = SendRecursiveRequest(rsp, q)
 				}
 
