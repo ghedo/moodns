@@ -40,7 +40,7 @@ import "time"
 import "syscall"
 import "unsafe"
 
-import "code.google.com/p/go.net/ipv4"
+import "golang.org/x/net/ipv4"
 
 import "netlink"
 
