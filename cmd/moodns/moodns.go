@@ -31,41 +31,49 @@
 package main
 
 import "log"
+import "os"
+import "strings"
 
 import "github.com/docopt/docopt-go"
 
-import "mdns"
+import "github.com/ghedo/moodns/mdns"
 
 func main() {
 	log.SetFlags(0)
 
-	usage := `Usage: moodns-resolve [options] <name>
+	usage := `Usage: moodns [options]
 
 Options:
-  -6, --ipv6  Request IPv6 address too [default: false].
-  -h, --help  Show the program's help message and exit.`
+  -H <hostname>, --host <hostname>      Name of the local host.
+  -l <addr:port>, --listen <addr:port>  Listen on this local address and port [default: 0.0.0.0:5353].
+  -r, --enable-multicast-forward        Enable forwarding of unicast requests to multicast.
+  -s, --silent                          Print fatal errors only.
+  -h, --help                            Show the program's help message and exit.`
 
 	args, err := docopt.Parse(usage, nil, true, "", false)
 	if err != nil {
 		log.Fatalf("Invalid arguments: %s", err)
 	}
 
-	name := args["<name>"].(string)
+	listen := args["--listen"].(string)
 
-	req := new(mdns.Message)
-
-	qname := []byte(name + ".")
-
-	req.AppendQD(mdns.NewQD(qname, mdns.TypeA, mdns.ClassInet))
-
-	if args["--ipv6"].(bool) {
-		req.AppendQD(mdns.NewQD(qname, mdns.TypeAAAA, mdns.ClassInet))
+	hostname, _ := os.Hostname()
+	if args["--host"] != nil {
+		hostname = args["--host"].(string)
 	}
 
-	rsp, err := mdns.SendRequest(req)
-	if err != nil {
-		log.Fatalf("Error sending request: %s", err)
+	localname := hostname + ".local."
+	silent    := args["--silent"].(bool)
+	forward   := args["--enable-multicast-forward"].(bool)
+
+	for _, addr := range strings.Split(listen, ",") {
+		maddr, server, err := mdns.NewServer(addr)
+		if err != nil {
+			log.Fatalf("Error starting server: %s", err)
+		}
+
+		go mdns.Serve(server, maddr, localname, silent, forward)
 	}
 
-	log.Println(rsp)
+	select {}
 }

@@ -9,12 +9,15 @@ BUILDTAGS=debug
 all: moodns moodns-resolve
 
 moodns:
-	go get -tags '$(BUILDTAGS)' -d -v main/moodns
-	go install -tags '$(BUILDTAGS)' main/moodns
+	go get -tags '$(BUILDTAGS)' -d -v ./cmd/moodns
+	go build -tags '$(BUILDTAGS)' ./cmd/moodns
 
 moodns-resolve:
-	go get -tags '$(BUILDTAGS)' -d -v main/moodns-resolve
-	go install -tags '$(BUILDTAGS)' main/moodns-resolve
+	go get -tags '$(BUILDTAGS)' -d -v ./cmd/moodns-resolve
+	go build -tags '$(BUILDTAGS)' ./cmd/moodns-resolve
+
+vet:
+	go vet ./...
 
 man: docs/moodns.1.md docs/moodns-resolve.1.md
 	ronn -r $?

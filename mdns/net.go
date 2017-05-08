@@ -42,7 +42,7 @@ import "unsafe"
 
 import "golang.org/x/net/ipv4"
 
-import "netlink"
+import "github.com/ghedo/moodns/netlink"
 
 const maddr4 = "224.0.0.251:5353"
 const maddr6 = "[FF02::FB]:5353"
