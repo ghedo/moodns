@@ -39,9 +39,9 @@ import "github.com/docopt/docopt-go"
 import "github.com/ghedo/moodns/mdns"
 
 func main() {
-	log.SetFlags(0)
+    log.SetFlags(0)
 
-	usage := `Usage: moodns [options]
+    usage := `Usage: moodns [options]
 
 Options:
   -H <hostname>, --host <hostname>      Name of the local host.
@@ -50,30 +50,30 @@ Options:
   -s, --silent                          Print fatal errors only.
   -h, --help                            Show the program's help message and exit.`
 
-	args, err := docopt.Parse(usage, nil, true, "", false)
-	if err != nil {
-		log.Fatalf("Invalid arguments: %s", err)
-	}
+    args, err := docopt.Parse(usage, nil, true, "", false)
+    if err != nil {
+        log.Fatalf("Invalid arguments: %s", err)
+    }
 
-	listen := args["--listen"].(string)
+    listen := args["--listen"].(string)
 
-	hostname, _ := os.Hostname()
-	if args["--host"] != nil {
-		hostname = args["--host"].(string)
-	}
+    hostname, _ := os.Hostname()
+    if args["--host"] != nil {
+        hostname = args["--host"].(string)
+    }
 
-	localname := hostname + ".local."
-	silent    := args["--silent"].(bool)
-	forward   := args["--enable-multicast-forward"].(bool)
+    localname := hostname + ".local."
+    silent    := args["--silent"].(bool)
+    forward   := args["--enable-multicast-forward"].(bool)
 
-	for _, addr := range strings.Split(listen, ",") {
-		maddr, server, err := mdns.NewServer(addr)
-		if err != nil {
-			log.Fatalf("Error starting server: %s", err)
-		}
+    for _, addr := range strings.Split(listen, ",") {
+        maddr, server, err := mdns.NewServer(addr)
+        if err != nil {
+            log.Fatalf("Error starting server: %s", err)
+        }
 
-		go mdns.Serve(server, maddr, localname, silent, forward)
-	}
+        go mdns.Serve(server, maddr, localname, silent, forward)
+    }
 
-	select {}
+    select {}
 }

@@ -37,35 +37,35 @@ import "github.com/docopt/docopt-go"
 import "github.com/ghedo/moodns/mdns"
 
 func main() {
-	log.SetFlags(0)
+    log.SetFlags(0)
 
-	usage := `Usage: moodns-resolve [options] <name>
+    usage := `Usage: moodns-resolve [options] <name>
 
 Options:
   -6, --ipv6  Request IPv6 address too [default: false].
   -h, --help  Show the program's help message and exit.`
 
-	args, err := docopt.Parse(usage, nil, true, "", false)
-	if err != nil {
-		log.Fatalf("Invalid arguments: %s", err)
-	}
+    args, err := docopt.Parse(usage, nil, true, "", false)
+    if err != nil {
+        log.Fatalf("Invalid arguments: %s", err)
+    }
 
-	name := args["<name>"].(string)
+    name := args["<name>"].(string)
 
-	req := new(mdns.Message)
+    req := new(mdns.Message)
 
-	qname := []byte(name + ".")
+    qname := []byte(name + ".")
 
-	req.AppendQD(mdns.NewQD(qname, mdns.TypeA, mdns.ClassInet))
+    req.AppendQD(mdns.NewQD(qname, mdns.TypeA, mdns.ClassInet))
 
-	if args["--ipv6"].(bool) {
-		req.AppendQD(mdns.NewQD(qname, mdns.TypeAAAA, mdns.ClassInet))
-	}
+    if args["--ipv6"].(bool) {
+        req.AppendQD(mdns.NewQD(qname, mdns.TypeAAAA, mdns.ClassInet))
+    }
 
-	rsp, err := mdns.SendRequest(req)
-	if err != nil {
-		log.Fatalf("Error sending request: %s", err)
-	}
+    rsp, err := mdns.SendRequest(req)
+    if err != nil {
+        log.Fatalf("Error sending request: %s", err)
+    }
 
-	log.Println(rsp)
+    log.Println(rsp)
 }
