@@ -1,0 +1,27 @@
+#!/usr/bin/make -f
+
+TAG = $(shell git tag | tail -1 | cut -b 2-)
+VER = $(shell dpkg-parsechangelog | sed -rne 's,^Version: ([^-]+).*,\1,p')
+
+export DH_GOLANG_BUILDPKG="github.com/ghedo/moodns/cmd/..."
+
+%:
+	dh $@ --buildsystem=golang --with=golang
+
+override_dh_auto_build:
+	dh_auto_build
+	make man
+
+override_dh_install:
+	dh_install
+	dh_install etc/moodns.service lib/systemd/system/
+
+override_dh_auto_test:
+	# No tests
+
+override_dh_strip:
+	dh_strip --no-automatic-dbgsym
+
+create-orig:
+	git archive --format=tar.gz --prefix=moodns-$(TAG)/ \
+		--output moodns_$(VER).orig.tar.gz master
