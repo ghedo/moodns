@@ -9,7 +9,8 @@ DNS programming interfaces without the need for a conventional DNS server.
 
 [rfc]: http://tools.ietf.org/html/rfc6762
 
-### FEATURES
+Features
+--------
 
 * No configuration required.
 * Support for forwarding unicast DNS queries to multicast servers which can be
@@ -17,12 +18,13 @@ DNS programming interfaces without the need for a conventional DNS server.
   changes (see caveats below).
 * No dependencies (e.g. dbus) required.
 
-## GETTING STARTED
+Getting Started
+---------------
 
 There's not much to it, just run:
 
 ```bash
-$ moodns
+$ sudo moodns
 ```
 
 moodns will start answering multicast DNS queries for the local host (i.e. those
@@ -69,7 +71,8 @@ See the [man page](http://ghedo.github.io/moodns/) for more information.
 
 [nss]: http://0pointer.de/lennart/projects/nss-mdns/
 
-## BUILDING
+Building
+--------
 
 moodns is distributed as source code. Install with:
 
@@ -77,7 +80,8 @@ moodns is distributed as source code. Install with:
 $ make
 ```
 
-## COPYRIGHT
+Copyright
+---------
 
 Copyright (C) 2014 Alessandro Ghedini <alessandro@ghedini.me>
 
