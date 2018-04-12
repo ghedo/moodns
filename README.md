@@ -7,7 +7,7 @@ moodns
 allows programs to discover hosts running on a local network by using familiar
 DNS programming interfaces without the need for a conventional DNS server.
 
-[rfc]: http://tools.ietf.org/html/rfc6762
+[rfc]: https://tools.ietf.org/html/rfc6762
 
 Features
 --------
@@ -67,7 +67,7 @@ multicast DNS specs and is really just a hack which may break your system in
 unexpected ways. Unless you know what you are doing, use [nss-mdns][nss]
 instead.
 
-See the [man page](http://ghedo.github.io/moodns/) for more information.
+See the [man page](https://ghedo.github.io/moodns/) for more information.
 
 [nss]: http://0pointer.de/lennart/projects/nss-mdns/
 
