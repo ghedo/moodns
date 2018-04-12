@@ -3,7 +3,7 @@ moodns
 
 ![Travis CI](https://secure.travis-ci.org/ghedo/moodns.png)
 
-**moodns** is a server implementation of [multicast DNS] [rfc]. Multicast DNS
+**moodns** is a server implementation of [multicast DNS][rfc]. Multicast DNS
 allows programs to discover hosts running on a local network by using familiar
 DNS programming interfaces without the need for a conventional DNS server.
 
@@ -32,7 +32,7 @@ asking for the `$HOST.local` domain name, unless an alternative hostname is
 provided).
 
 In order to enable multicast DNS on a client computer one can either install
-[nss-mdns] [nss] (recommended), or enable the forwarding of unicast requests in
+[nss-mdns][nss] (recommended), or enable the forwarding of unicast requests in
 moodns.
 
 "Multicast forwarding" allows moodns to receive DNS queries via unicast (like
@@ -64,7 +64,7 @@ fallback to another DNS server without waiting for the timeout to expire
 
 Note however that this mode is **not recommended**. It's not part of the
 multicast DNS specs and is really just a hack which may break your system in
-unexpected ways. Unless you know what you are doing, use [nss-mdns] [nss]
+unexpected ways. Unless you know what you are doing, use [nss-mdns][nss]
 instead.
 
 See the [man page](http://ghedo.github.io/moodns/) for more information.
@@ -79,6 +79,17 @@ moodns is distributed as source code. Install with:
 ```bash
 $ make
 ```
+
+ToDo
+----
+
+- Reverse multicast DNS lookup
+- Full IPv6 support
+- DNS-based service discovery (RFC6763)
+- Name compression in DNS queries and answers
+- Startup probing and announcing support
+- Conflict resolution support
+- Known-answer suppression (incl. multipacket) support
 
 Copyright
 ---------

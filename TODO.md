@@ -1,7 +1,0 @@
-- Reverse multicast DNS lookup
-- Full IPv6 support
-- DNS-based service discovery (RFC6763)
-- Name compression in DNS queries and answers
-- Startup probing and announcing support
-- Conflict resolution support
-- Known-answer suppression (incl. multipacket) support
