@@ -74,10 +74,11 @@ See the [man page](https://ghedo.github.io/moodns/) for more information.
 Building
 --------
 
-moodns is distributed as source code. Install with:
+moodns is distributed as source code. Build with:
 
 ```bash
-$ make
+$ go get github.com/ghedo/moodns/cmd/moodns
+$ go get github.com/ghedo/moodns/cmd/moodns-resolve
 ```
 
 ToDo
